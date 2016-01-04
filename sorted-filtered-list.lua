@@ -1,8 +1,8 @@
+
 -- must be a set of ids
 local idSet = KEYS[1];
 -- must be a key, which holds metadata for a given id, with a `*` as a substitute for an id from idSet. Optional
 local metadataKey = KEYS[2];
-
 -- hashKey to use for sorting, which is taken from `metadataKey` hash, Optional.
 local hashKey = ARGV[1];
 -- ASC / DESC
@@ -10,9 +10,9 @@ local order = ARGV[2];
 -- stringified instructions for filtering
 local filter = ARGV[3];
 -- pagination offset
-local offset = tonumber(ARGV[4]);
+local offset = tonumber(ARGV[4] or 0);
 -- limit of items to return in a single call
-local limit = tonumber(ARGV[5]);
+local limit = tonumber(ARGV[5] or 10);
 -- caching time
 local expiration = tonumber(ARGV[6] or 30000);
 
@@ -22,6 +22,7 @@ local strfind = string.find;
 local tinsert = table.insert;
 local tcontact = table.concat;
 local tsort = table.sort;
+local rcall = redis.call;
 
 local function isempty(s)
   return s == nil or s == '';
@@ -50,44 +51,10 @@ local function hashmapSize(table)
 end
 
 local function updateExpireAndReturnWithSize(key)
-  redis.call("PEXPIRE", key, expiration);
-  local ret = redis.call("LRANGE", key, offset, offset + limit - 1);
-  tinsert(ret, redis.call("LLEN", key));
+  rcall("PEXPIRE", key, expiration);
+  local ret = rcall("LRANGE", key, offset, offset + limit - 1);
+  tinsert(ret, rcall("LLEN", key));
   return ret;
-end
-
-local function sortFuncASC(a, b)
-  local sortA = arr[a];
-  local sortB = arr[b];
-
-  if isempty(sortA) and isempty(sortB) then
-    return true;
-  elseif isempty(sortA) then
-    return false;
-  elseif isempty(sortB) then
-    return true;
-  elseif isnumber(sortA) and isnumber(sortB) then
-    return tonumber(sortA) < tonumber(sortB);
-  else
-    return strlower(sortA) < strlower(sortB);
-  end
-end
-
-local function sortFuncDESC(a, b)
-  local sortA = arr[a];
-  local sortB = arr[b];
-
-  if isempty(sortA) and isempty(sortB) then
-    return false;
-  elseif isempty(sortA) then
-    return true;
-  elseif isempty(sortB) then
-    return false;
-  elseif isnumber(sortA) and isnumber(sortB) then
-    return tonumber(sortA) > tonumber(sortB);
-  else
-    return strlower(sortA) > strlower(sortB);
-  end
 end
 
 -- create filtered list name
@@ -123,21 +90,55 @@ local FFLKey = tcontact(finalFilteredListKeys, ":");
 local PSSKey = tcontact(preSortedSetKeys, ":");
 
 -- do we have existing filtered set?
-if redis.call("EXISTS", FFLKey) == 1 then
+if rcall("EXISTS", FFLKey) == 1 then
   return updateExpireAndReturnWithSize(FFLKey);
 end
 
 -- do we have an existing sorted set?
 local valuesToSort;
-if redis.call("EXISTS", PSSKey) == 0 then
-  valuesToSort = redis.call("SMEMBERS", idSet);
+if rcall("EXISTS", PSSKey) == 0 then
+  valuesToSort = rcall("SMEMBERS", idSet);
 
   -- if we sort the given set
   if isempty(metadataKey) == false and isempty(hashKey) == false then
     local arr = {};
     for i,v in pairs(valuesToSort) do
       local metaKey = metadataKey:gsub("*", v, 1);
-      arr[v] = redis.call("HGET", metaKey, hashKey);
+      arr[v] = rcall("HGET", metaKey, hashKey);
+    end
+
+    local function sortFuncASC(a, b)
+      local sortA = arr[a];
+      local sortB = arr[b];
+
+      if isempty(sortA) and isempty(sortB) then
+        return true;
+      elseif isempty(sortA) then
+        return false;
+      elseif isempty(sortB) then
+        return true;
+      elseif isnumber(sortA) and isnumber(sortB) then
+        return tonumber(sortA) < tonumber(sortB);
+      else
+        return strlower(sortA) < strlower(sortB);
+      end
+    end
+
+    local function sortFuncDESC(a, b)
+      local sortA = arr[a];
+      local sortB = arr[b];
+
+      if isempty(sortA) and isempty(sortB) then
+        return false;
+      elseif isempty(sortA) then
+        return true;
+      elseif isempty(sortB) then
+        return false;
+      elseif isnumber(sortA) and isnumber(sortB) then
+        return tonumber(sortA) > tonumber(sortB);
+      else
+        return strlower(sortA) > strlower(sortB);
+      end
     end
 
     if order == "ASC" then
@@ -154,8 +155,8 @@ if redis.call("EXISTS", PSSKey) == 0 then
   end
 
   if #valuesToSort > 0 then
-    redis.call("RPUSH", PSSKey, unpack(valuesToSort));
-    redis.call("PEXPIRE", PSSKey, expiration);
+    rcall("RPUSH", PSSKey, unpack(valuesToSort));
+    rcall("PEXPIRE", PSSKey, expiration);
   else
     return {0};
   end
@@ -175,8 +176,8 @@ else
 
   -- populate in-memory data
   -- update expiration timer
-  redis.call("PEXPIRE", PSSKey, expiration);
-  valuesToSort = redis.call("LRANGE", PSSKey, 0, -1);
+  rcall("PEXPIRE", PSSKey, expiration);
+  valuesToSort = rcall("LRANGE", PSSKey, 0, -1);
 end
 
 -- filtered list holder
@@ -185,16 +186,16 @@ local output = {};
 -- filter function
 local function filterString(value, filter)
   if isempty(value) then
-    return nil;
+    return false;
   end
 
-  return strfind(strlower(value), strlower(filter));
+  return strfind(strlower(value), strlower(filter)) ~= nil;
 end
 
 -- filter: gte
 local function gte(value, filter)
   if isempty(value) then
-    return nil;
+    return false;
   end
 
   return tonumber(value) >= tonumber(filter);
@@ -203,10 +204,54 @@ end
 -- filter: lte
 local function lte(value, filter)
   if isempty(value) then
-    return nil;
+    return false;
   end
 
   return tonumber(value) <= tonumber(filter);
+end
+
+-- filter: eq
+local function eq(value, filter)
+  return value == filter;
+end
+
+-- filter: not equal
+local function ne(value, filter)
+  return value ~= filter;
+end
+
+-- when we match against a table
+local function tableFilter(valueToFilter, filterValue)
+  for op, opFilter in pairs(filterValue) do
+    if filter(op, opFilter, valueToFilter) then
+      return false;
+    end
+  end
+
+  return true;
+end
+
+-- supported op type table
+local opType = {
+  gte = gte,
+  lte = lte,
+  match = filterString,
+  eq = eq,
+  ne = ne
+};
+
+local filterType = {
+  table = tableFilter,
+  string = filterString
+};
+
+local function filter(op, opFilter, fieldValue)
+  local thunk = opType[op];
+  if type(thunk) ~= "function" then
+    return error("not supported op: " .. op);
+  end
+
+  return thunk(fieldValue, opFilter);
 end
 
 -- if no metadata key, but we are still here
@@ -216,7 +261,7 @@ if isempty(metadataKey) then
   -- iterate over filtered set
   for i,idValue in pairs(valuesToSort) do
     -- compare strings and insert if they match
-    if filterString(idValue, filterValue) ~= nil then
+    if filterString(idValue, filterValue) then
       tinsert(output, idValue);
     end
   end
@@ -227,37 +272,28 @@ else
     local matched = true;
 
     for fieldName, filterValue in pairs(jsonFilter) do
-      local fieldValue;
+      if fieldName == '#multi' then
+        local fieldValues = rcall('hmget', metaKey, unpack(fieldValue["fields"]));
+        local anyMatched = false;
+        local matchValue = filterValue["match"];
 
-      -- special case
-      if fieldName == "#" then
-        fieldValue = idValue;
-      else
-        fieldValue = redis.call("hget", metaKey, fieldName);
-      end
-
-      if type(filterValue) == 'table' then
-        for op, opFilter in pairs(filterValue) do
-          if op == 'gte' then
-            if gte(fieldValue, opFilter) ~= true then
-              matched = false;
-              break;
-            end
-          elseif op == 'lte' then
-            if lte(fieldValue, opFilter) ~= true then
-              matched = false;
-              break;
-            end
-          else
-            return redis.error_reply("not supported op: " .. op);
+        for _,fieldValue in pairs(fieldValues) do
+          if filterString(fieldValue, matchValue) then
+            anyMatched = true;
+            break;
           end
         end
 
-        if matched == false then
+        if anyMatched == false then
+          matched = false;
           break;
         end
       else
-        if filterString(fieldValue, filterValue) == nil then
+        -- get data that we are filter
+        local fieldValue = (fieldName == "#") and idValue or rcall("hget", metaKey, fieldName);
+
+        -- traverse filter types and perform filtering
+        if filterType[type(filterValue)](fieldValue, filterValue) ~= true then
           matched = false;
           break;
         end
@@ -271,7 +307,7 @@ else
 end
 
 if #output > 0 then
-  redis.call("RPUSH", FFLKey, unpack(output));
+  rcall("RPUSH", FFLKey, unpack(output));
   return updateExpireAndReturnWithSize(FFLKey);
 else
   return {0};

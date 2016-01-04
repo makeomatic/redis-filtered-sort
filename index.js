@@ -12,6 +12,18 @@ exports.attach = function attachToRedis(redis, _name) {
 };
 
 /**
+ * Performs escape on a filter clause
+ * ^ $ ( ) % . [ ] * + - ? are prefixed with %
+ *
+ * @param  {String} filter
+ * @return {String}
+ */
+const regexp = /[\^\$\(\)\%\.\[\]\*\+\-\?]/g;
+exports.escape = function escape(filter) {
+  return filter.replace(regexp, '%$&');
+};
+
+/**
  * Exports raw script
  * @type {Buffer}
  */

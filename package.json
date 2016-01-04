@@ -4,7 +4,7 @@
   "description": "Exports LUA script, which is able to perform multi filter operations, as well as sorts",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "./test/docker.sh"
   },
   "repository": {
     "type": "git",
@@ -22,5 +22,13 @@
   "bugs": {
     "url": "https://github.com/makeomatic/redis-filtered-sort/issues"
   },
-  "homepage": "https://github.com/makeomatic/redis-filtered-sort#readme"
+  "homepage": "https://github.com/makeomatic/redis-filtered-sort#readme",
+  "devDependencies": {
+    "babel-register": "^6.3.13",
+    "chai": "^3.4.1",
+    "faker": "^3.0.1",
+    "ioredis": "^1.14.0",
+    "lodash": "^3.10.1",
+    "mocha": "^2.3.4"
+  }
 }
