@@ -19,18 +19,20 @@ filteredSort.attach(redis);
 // filteredSort.script
 
 const filter = {
-  '#': 'mamba',
+  '#': 'mamba', // only ids with `mamba` in them will be presented
   priority: {
-    gt: 10,
+    gte: 10, // only ids, which have priority greater or equal to 10 will be returned
   },
+  name: 'love', // only ids, which have 'name' containing 'love' in their metadata will be returned
 };
 const offset = 10;
 const limit = 20;
+const sortBy = 'priority';
 const expiration = 30000; // ms
 
 // perform op
 redis
-  .sortedFilteredList('set-of-ids', 'metadata*', 'priority', 'DESC', JSON.stringify(filter), offset, limit, expiration)
+  .sortedFilteredList('set-of-ids', 'metadata*', sortBy, 'DESC', JSON.stringify(filter), offset, limit, expiration)
   .then(data => {
     // how many items in the list
     // rest of the data is ids from the 'set-of-ids'
