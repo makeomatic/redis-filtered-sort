@@ -1,0 +1,26 @@
+{
+  "name": "redis-filtered-sort",
+  "version": "1.0.0",
+  "description": "Exports LUA script, which is able to perform multi filter operations, as well as sorts",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/makeomatic/redis-filtered-sort.git"
+  },
+  "keywords": [
+    "lua",
+    "redis",
+    "sort",
+    "filter",
+    "multi-sort"
+  ],
+  "author": "Vitaly Aminev <v@makeomatic.ru>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/makeomatic/redis-filtered-sort/issues"
+  },
+  "homepage": "https://github.com/makeomatic/redis-filtered-sort#readme"
+}
