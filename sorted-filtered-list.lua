@@ -16,6 +16,13 @@ local limit = tonumber(ARGV[5]);
 -- caching time
 local expiration = tonumber(ARGV[6] or 30000);
 
+-- local caches
+local strlower = string.lower;
+local strfind = string.find;
+local tinsert = table.insert;
+local tcontact = table.concat;
+local tsort = table.sort;
+
 local function isempty(s)
   return s == nil or s == '';
 end
@@ -45,8 +52,42 @@ end
 local function updateExpireAndReturnWithSize(key)
   redis.call("PEXPIRE", key, expiration);
   local ret = redis.call("LRANGE", key, offset, offset + limit - 1);
-  table.insert(ret, redis.call("LLEN", key));
+  tinsert(ret, redis.call("LLEN", key));
   return ret;
+end
+
+local function sortFuncASC(a, b)
+  local sortA = arr[a];
+  local sortB = arr[b];
+
+  if isempty(sortA) and isempty(sortB) then
+    return true;
+  elseif isempty(sortA) then
+    return false;
+  elseif isempty(sortB) then
+    return true;
+  elseif isnumber(sortA) and isnumber(sortB) then
+    return tonumber(sortA) < tonumber(sortB);
+  else
+    return strlower(sortA) < strlower(sortB);
+  end
+end
+
+local function sortFuncDESC(a, b)
+  local sortA = arr[a];
+  local sortB = arr[b];
+
+  if isempty(sortA) and isempty(sortB) then
+    return false;
+  elseif isempty(sortA) then
+    return true;
+  elseif isempty(sortB) then
+    return false;
+  elseif isnumber(sortA) and isnumber(sortB) then
+    return tonumber(sortA) > tonumber(sortB);
+  else
+    return strlower(sortA) > strlower(sortB);
+  end
 end
 
 -- create filtered list name
@@ -58,35 +99,35 @@ local jsonFilter = cjson.decode(filter);
 local totalFilters = hashmapSize(jsonFilter);
 
 -- order always exists
-table.insert(finalFilteredListKeys, order);
-table.insert(preSortedSetKeys, order);
+tinsert(finalFilteredListKeys, order);
+tinsert(preSortedSetKeys, order);
 
 if isempty(metadataKey) == false then
   if isempty(hashKey) == false then
-    table.insert(finalFilteredListKeys, metadataKey);
-    table.insert(finalFilteredListKeys, hashKey);
-    table.insert(preSortedSetKeys, metadataKey);
-    table.insert(preSortedSetKeys, hashKey);
+    tinsert(finalFilteredListKeys, metadataKey);
+    tinsert(finalFilteredListKeys, hashKey);
+    tinsert(preSortedSetKeys, metadataKey);
+    tinsert(preSortedSetKeys, hashKey);
   end
 
   -- do we have filter?
   if totalFilters > 0 then
-    table.insert(finalFilteredListKeys, filter);
+    tinsert(finalFilteredListKeys, filter);
   end
 elseif totalFilters == 1 and type(jsonFilter["#"]) == "string" then
-  table.insert(finalFilteredListKeys, filter);
+  tinsert(finalFilteredListKeys, filter);
 end
 
 -- get final filtered key set
-local FFLKey = table.concat(finalFilteredListKeys, ":");
-local PSSKey = table.concat(preSortedSetKeys, ":");
+local FFLKey = tcontact(finalFilteredListKeys, ":");
+local PSSKey = tcontact(preSortedSetKeys, ":");
 
 -- do we have existing filtered set?
 if redis.call("EXISTS", FFLKey) == 1 then
   return updateExpireAndReturnWithSize(FFLKey);
 end
 
--- do we have existing sorted set?
+-- do we have an existing sorted set?
 local valuesToSort;
 if redis.call("EXISTS", PSSKey) == 0 then
   valuesToSort = redis.call("SMEMBERS", idSet);
@@ -100,49 +141,15 @@ if redis.call("EXISTS", PSSKey) == 0 then
     end
 
     if order == "ASC" then
-      local function sortFuncASC(a, b)
-        local sortA = arr[a];
-        local sortB = arr[b];
-
-        if isempty(sortA) and isempty(sortB) then
-          return true;
-        elseif isempty(sortA) then
-          return false;
-        elseif isempty(sortB) then
-          return true;
-        elseif isnumber(sortA) and isnumber(sortB) then
-          return tonumber(sortA) < tonumber(sortB);
-        else
-          return string.lower(sortA) < string.lower(sortB);
-        end
-      end
-
-      table.sort(valuesToSort, sortFuncASC);
+      tsort(valuesToSort, sortFuncASC);
     else
-      local function sortFuncDESC(a, b)
-        local sortA = arr[a];
-        local sortB = arr[b];
-
-        if isempty(sortA) and isempty(sortB) then
-          return false;
-        elseif isempty(sortA) then
-          return true;
-        elseif isempty(sortB) then
-          return false;
-        elseif isnumber(sortA) and isnumber(sortB) then
-          return tonumber(sortA) > tonumber(sortB);
-        else
-          return string.lower(sortA) > string.lower(sortB);
-        end
-      end
-
-      table.sort(valuesToSort, sortFuncDESC);
+      tsort(valuesToSort, sortFuncDESC);
     end
   else
     if order == "ASC" then
-      table.sort(valuesToSort, function (a, b) return a < b end);
+      tsort(valuesToSort, function (a, b) return a < b end);
     else
-      table.sort(valuesToSort, function (a, b) return a > b end);
+      tsort(valuesToSort, function (a, b) return a > b end);
     end
   end
 
@@ -156,7 +163,7 @@ if redis.call("EXISTS", PSSKey) == 0 then
   if FFLKey == PSSKey then
     -- early return if we have no filter
     local ret = subrange(valuesToSort, offset, offset + limit);
-    table.insert(ret, #valuesToSort);
+    tinsert(ret, #valuesToSort);
     return ret;
   end
 else
@@ -181,7 +188,7 @@ local function filterString(value, filter)
     return nil;
   end
 
-  return string.find(string.lower(value), string.lower(filter));
+  return strfind(strlower(value), strlower(filter));
 end
 
 -- filter: gte
@@ -210,7 +217,7 @@ if isempty(metadataKey) then
   for i,idValue in pairs(valuesToSort) do
     -- compare strings and insert if they match
     if filterString(idValue, filterValue) ~= nil then
-      table.insert(output, idValue);
+      tinsert(output, idValue);
     end
   end
 -- we actually have metadata
@@ -258,7 +265,7 @@ else
     end
 
     if matched then
-      table.insert(output, idValue);
+      tinsert(output, idValue);
     end
   end
 end
