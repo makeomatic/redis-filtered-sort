@@ -2,6 +2,11 @@ const fs = require('fs');
 const path = require('path');
 const lua = fs.readFileSync(path.join(__dirname, 'sorted-filtered-list.lua'));
 
+// cached vars
+const regexp = /[\^\$\(\)\%\.\[\]\*\+\-\?]/g;
+const keys = Object.keys;
+const stringify = JSON.stringify;
+
 /**
  * Attached .sortedFilteredList function to ioredis instance
  * @param  {ioredis} redis
@@ -18,9 +23,46 @@ exports.attach = function attachToRedis(redis, _name) {
  * @param  {String} filter
  * @return {String}
  */
-const regexp = /[\^\$\(\)\%\.\[\]\*\+\-\?]/g;
-exports.escape = function escape(filter) {
+function escape(filter) {
   return filter.replace(regexp, '%$&');
+};
+exports.escape = escape;
+
+/**
+ * Walks over object and escapes string, does not touch #multi.fields
+ * @param  {Object} obj
+ * @return {Object}
+ */
+function iterateOverObject(obj) {
+  const props = keys(obj);
+  const output = {};
+  props.forEach(function iterateOverProps(prop) {
+    const val = obj[prop];
+    const type = typeof val;
+    if (type === 'string') {
+      output[prop] = escape(val);
+    } else if (type === 'object') {
+      if (prop !== '#multi') {
+        output[prop] = iterateOverObject(val);
+      } else {
+        output[prop] = val;
+        val.match = escape(val.match);
+      }
+    } else {
+      output[prop] = val;
+    }
+  });
+
+  return output;
+}
+
+/**
+ * Goes over filter and escapes each string
+ * @param  {Object} obj
+ * @return {String}
+ */
+exports.filter = function filter(obj) {
+  return stringify(iterateOverObject(obj));
 };
 
 /**

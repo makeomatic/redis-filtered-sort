@@ -23,6 +23,8 @@ local tinsert = table.insert;
 local tcontact = table.concat;
 local tsort = table.sort;
 local rcall = redis.call;
+local unpack = unpack;
+local pairs = pairs;
 
 local function isempty(s)
   return s == nil or s == '';
@@ -39,6 +41,23 @@ local function subrange(t, first, last)
   end
 
   return sub;
+end
+
+local function massive_redis_command(command, key, t)
+  local i = 1;
+  local temp = {};
+  while (i <= #t) do
+    tinsert(temp, t[i]);
+    tinsert(temp, t[i + 1]);
+    if #temp >= 1000 then
+      rcall(command, key, unpack(temp));
+      temp = {};
+    end
+    i = i + 2;
+  end
+  if #temp > 0 then
+    rcall(command, key, unpack(temp));
+  end
 end
 
 local function hashmapSize(table)
@@ -81,8 +100,9 @@ if isempty(metadataKey) == false then
   if totalFilters > 0 then
     tinsert(finalFilteredListKeys, filter);
   end
-elseif totalFilters == 1 and type(jsonFilter["#"]) == "string" then
-  tinsert(finalFilteredListKeys, filter);
+elseif totalFilters >= 1 and type(jsonFilter["#"]) == "string" then
+  -- the rest of the filters are ignored, since we cant access them!
+  tinsert(finalFilteredListKeys, "{\"#\":" .. jsonFilter["#"] .. "}");
 end
 
 -- get final filtered key set
@@ -155,7 +175,7 @@ if rcall("EXISTS", PSSKey) == 0 then
   end
 
   if #valuesToSort > 0 then
-    rcall("RPUSH", PSSKey, unpack(valuesToSort));
+    massive_redis_command("RPUSH", PSSKey, valuesToSort);
     rcall("PEXPIRE", PSSKey, expiration);
   else
     return {0};
@@ -220,17 +240,6 @@ local function ne(value, filter)
   return value ~= filter;
 end
 
--- when we match against a table
-local function tableFilter(valueToFilter, filterValue)
-  for op, opFilter in pairs(filterValue) do
-    if filter(op, opFilter, valueToFilter) then
-      return false;
-    end
-  end
-
-  return true;
-end
-
 -- supported op type table
 local opType = {
   gte = gte,
@@ -238,11 +247,6 @@ local opType = {
   match = filterString,
   eq = eq,
   ne = ne
-};
-
-local filterType = {
-  table = tableFilter,
-  string = filterString
 };
 
 local function filter(op, opFilter, fieldValue)
@@ -254,12 +258,28 @@ local function filter(op, opFilter, fieldValue)
   return thunk(fieldValue, opFilter);
 end
 
+-- when we match against a table
+local function tableFilter(valueToFilter, filterValue)
+  for op, opFilter in pairs(filterValue) do
+    if filter(op, opFilter, valueToFilter) ~= true then
+      return false;
+    end
+  end
+
+  return true;
+end
+
+local filterType = {
+  table = tableFilter,
+  string = filterString
+};
+
 -- if no metadata key, but we are still here
 if isempty(metadataKey) then
   -- only sort by value, which is id
   local filterValue = jsonFilter["#"];
   -- iterate over filtered set
-  for i,idValue in pairs(valuesToSort) do
+  for i, idValue in pairs(valuesToSort) do
     -- compare strings and insert if they match
     if filterString(idValue, filterValue) then
       tinsert(output, idValue);
@@ -267,17 +287,17 @@ if isempty(metadataKey) then
   end
 -- we actually have metadata
 else
-  for i,idValue in pairs(valuesToSort) do
+  for i, idValue in pairs(valuesToSort) do
     local metaKey = metadataKey:gsub("*", idValue, 1);
     local matched = true;
 
     for fieldName, filterValue in pairs(jsonFilter) do
       if fieldName == '#multi' then
-        local fieldValues = rcall('hmget', metaKey, unpack(fieldValue["fields"]));
+        local fieldValues = rcall('hmget', metaKey, unpack(filterValue["fields"]));
         local anyMatched = false;
         local matchValue = filterValue["match"];
 
-        for _,fieldValue in pairs(fieldValues) do
+        for _, fieldValue in pairs(fieldValues) do
           if filterString(fieldValue, matchValue) then
             anyMatched = true;
             break;
@@ -307,7 +327,7 @@ else
 end
 
 if #output > 0 then
-  rcall("RPUSH", FFLKey, unpack(output));
+  massive_redis_command("RPUSH", FFLKey, output);
   return updateExpireAndReturnWithSize(FFLKey);
 else
   return {0};

@@ -11,7 +11,7 @@ hashed keys, which resolve to the same slot
 ## Usage
 
 ```js
-const { escape, attach } = require('redis-filtered-sort');
+const { filter: strFilter, attach } = require('redis-filtered-sort');
 const Redis = require('ioredis');
 const redis = new Redis();
 
@@ -21,15 +21,15 @@ attach(redis, 'fsort');
 // raw Buffer of lua script
 // filteredSort.script
 
-const filter = {
+const filter = strFilter({
   // only ids with `!mamba%` in them will be presented. Internally it uses lua string.find, so regexp is possible. Escape special chars
   // with % or use escape helper for that
-  '#': escape('!mamba%'),
+  '#': '!mamba%',
   priority: {
     gte: 10, // only ids, which have priority greater or equal to 10 will be returned
   },
   name: 'love', // only ids, which have 'name' containing 'love' in their metadata will be returned
-};
+});
 const offset = 10;
 const limit = 20;
 const sortBy = 'priority';
@@ -37,7 +37,7 @@ const expiration = 30000; // ms
 
 // perform op
 redis
-  .fsort('set-of-ids', 'metadata*', sortBy, 'DESC', JSON.stringify(filter), offset, limit, expiration)
+  .fsort('set-of-ids', 'metadata*', sortBy, 'DESC', filter, offset, limit, expiration)
   .then(data => {
     // how many items in the complete list
     // rest of the data is ids from the 'set-of-ids'
