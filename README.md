@@ -1,4 +1,7 @@
 # redis-filtered-sort
+
+[![Build Status](https://travis-ci.org/makeomatic/redis-filtered-sort.svg](https://travis-ci.org/makeomatic/redis-filtered-sort)
+
 Exports LUA script, which is able to perform multi filter operations, as well as sorts
 
 This basically replicates `http://redis.io/commands/sort` but with extra features and ability to run it in clustered mode with
