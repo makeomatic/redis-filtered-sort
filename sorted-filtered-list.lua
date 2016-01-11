@@ -26,12 +26,36 @@ local rcall = redis.call;
 local unpack = unpack;
 local pairs = pairs;
 
+local function catch(what)
+  return what[1]
+end
+
+local function try(what)
+  local status, result = pcall(what[1]);
+  if not status then
+    return what[2](result);
+  end
+
+  return result;
+end
+
 local function isempty(s)
   return s == nil or s == '';
 end
 
 local function isnumber(a)
-  return tonumber(a) ~= nil;
+  return try {
+    function()
+      local num = tonumber(a);
+      return num ~= nil and num or tonumber(cjson.decode(a));
+    end,
+
+    catch {
+      function()
+        return nil;
+      end
+    }
+  }
 end
 
 local function subrange(t, first, last)
@@ -137,9 +161,14 @@ if rcall("EXISTS", PSSKey) == 0 then
         return false;
       elseif isempty(sortB) then
         return true;
-      elseif isnumber(sortA) and isnumber(sortB) then
-        return tonumber(sortA) < tonumber(sortB);
       else
+        local numA = isnumber(sortA);
+        local numB = isnumber(sortB);
+
+        if numA ~= nil and numB ~= nil then
+          return numA < numB;
+        end
+
         return strlower(sortA) < strlower(sortB);
       end
     end
@@ -154,9 +183,14 @@ if rcall("EXISTS", PSSKey) == 0 then
         return true;
       elseif isempty(sortB) then
         return false;
-      elseif isnumber(sortA) and isnumber(sortB) then
-        return tonumber(sortA) > tonumber(sortB);
       else
+        local numA = isnumber(sortA);
+        local numB = isnumber(sortB);
+
+        if numA ~= nil and numB ~= nil then
+          return numA > numB;
+        end
+
         return strlower(sortA) > strlower(sortB);
       end
     end
@@ -218,7 +252,7 @@ local function gte(value, filter)
     return false;
   end
 
-  return tonumber(value) >= tonumber(filter);
+  return isnumber(value) >= filter;
 end
 
 -- filter: lte
@@ -227,7 +261,7 @@ local function lte(value, filter)
     return false;
   end
 
-  return tonumber(value) <= tonumber(filter);
+  return isnumber(value) <= filter;
 end
 
 -- filter: eq
