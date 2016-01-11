@@ -107,7 +107,8 @@ describe('filtered sort suite', function suite() {
       },
       walkie: {
         gte: 10,
-        ne: 'bore-dom'
+        ne: 'bore-dom',
+        eq: 'karamba%',
       },
       tom: '20',
       berlin: '!werthechampions0-9',
@@ -119,7 +120,8 @@ describe('filtered sort suite', function suite() {
       },
       walkie: {
         gte: 10,
-        ne: 'bore%-dom',
+        ne: 'bore-dom',
+        eq: 'karamba%',
       },
       tom: '20',
       berlin: '!werthechampions0%-9'

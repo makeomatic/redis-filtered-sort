@@ -6,6 +6,7 @@ const lua = fs.readFileSync(path.join(__dirname, 'sorted-filtered-list.lua'));
 const regexp = /[\^\$\(\)\%\.\[\]\*\+\-\?]/g;
 const keys = Object.keys;
 const stringify = JSON.stringify;
+const BLACK_LIST_PROPS = ['eq', 'ne'];
 
 /**
  * Attached .sortedFilteredList function to ioredis instance
@@ -39,7 +40,7 @@ function iterateOverObject(obj) {
   props.forEach(function iterateOverProps(prop) {
     const val = obj[prop];
     const type = typeof val;
-    if (type === 'string') {
+    if (type === 'string' && BLACK_LIST_PROPS.indexOf(prop) === -1) {
       output[prop] = escape(val);
     } else if (type === 'object') {
       if (prop !== '#multi') {
