@@ -274,13 +274,19 @@ local function ne(value, filter)
   return value ~= filter;
 end
 
+local function exists(value)
+  return isempty(value) == false;
+end
+
 -- supported op type table
 local opType = {
   gte = gte,
   lte = lte,
   match = filterString,
   eq = eq,
-  ne = ne
+  ne = ne,
+  exists = exists,
+  isempty = isempty
 };
 
 local function filter(op, opFilter, fieldValue)
