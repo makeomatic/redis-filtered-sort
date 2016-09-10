@@ -1,0 +1,7 @@
+{
+  "plugins": [
+    "transform-strict-mode",
+    "transform-es2015-spread",
+    "transform-object-rest-spread"
+  ]
+}

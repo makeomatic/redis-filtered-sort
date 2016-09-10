@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const calcSlot = require('cluster-key-slot');
 const lua = fs.readFileSync(path.join(__dirname, 'sorted-filtered-list.lua'));
 
 // cached vars
@@ -71,3 +72,43 @@ exports.filter = function filter(obj) {
  * @type {Buffer}
  */
 exports.script = lua;
+
+/**
+ * Invalidates cached filtered list
+ */
+exports.invalidate = function invalidate(redis, keyPrefix, _index) {
+  const keyPrefixLength = keyPrefix.length;
+  const index = `${keyPrefix}${_index}`;
+  const cacheKeys = [];
+  const slot = calcSlot(index);
+
+  // this has possibility of throwing, but not likely to since previous operations
+  // would've been rejected already, in a promise this will result in a rejection
+  const nodeKeys = redis.slots[slot];
+  const masterNode = nodeKeys.reduce((node, key) => node || redis.connectionPool.nodes.master[key], null);
+  const transform = (keys, prefixLength) => keys.map(key => key.slice(prefixLength));
+
+  function scan(node, cursor = '0') {
+    return node
+      .scan(cursor, 'MATCH', `${index}:*`, 'COUNT', 50)
+      .then(response => {
+        const [next, keys] = response;
+
+        if (keys.length > 0) {
+          cacheKeys.push(...transform(keys, keyPrefixLength));
+        }
+
+        if (next === '0') {
+          if (cacheKeys.length === 0) {
+            return Promise.resolve(0);
+          }
+
+          return redis.del(cacheKeys);
+        }
+
+        return scan(node, next);
+      });
+  }
+
+  return scan(masterNode);
+}
