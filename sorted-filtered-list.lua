@@ -40,7 +40,7 @@ local function try(what)
 end
 
 local function isempty(s)
-  return s == nil or s == '';
+  return s == nil or s == '' or s == false;
 end
 
 local function isnumber(a)
@@ -274,7 +274,7 @@ local function ne(value, filter)
   return value ~= filter;
 end
 
-local function exists(value)
+local function exists(value, filter)
   return isempty(value) == false;
 end
 

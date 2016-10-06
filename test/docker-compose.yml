@@ -1,12 +1,12 @@
 redis:
-  image: tenstartups/alpine-redis
+  image: redis:3.2.4-alpine
   container_name: redis
   hostname: redis
   expose:
     - "6379"
 
 tester:
-  image: ${IMAGE}
+  image: makeomatic/node:6.5.0
   links:
     - redis
   working_dir: /src
@@ -15,4 +15,4 @@ tester:
   environment:
     NODE_ENV: "docker"
     DEBUG: ${DEBUG}
-  command: 'true'
+  command: 'tail -f /dev/null'

@@ -34,6 +34,10 @@ describe('filtered sort suite', function suite() {
       age: ld.random(10, 60),
     };
 
+    if (ld.random(1, 2) === 2) {
+      user.fieldExists = 1;
+    }
+
     insertedIds.push(id);
     invertedIds.push(id);
 
@@ -70,6 +74,10 @@ describe('filtered sort suite', function suite() {
       }
     };
   }
+
+  before('cleanup', function cleanup() {
+    return redis.flushdb();
+  });
 
   before('populate data', function pretest() {
     this.timeout(5000);
@@ -259,6 +267,104 @@ describe('filtered sort suite', function suite() {
     });
   });
 
+  describe('filter/exists', function sortFilterExistsEmptySuite() {
+    const fieldName = 'fieldExists';
+    const hasOwnProperty = Object.prototype.hasOwnProperty;
+    const jsFilter = id => hasOwnProperty.call(metadata[id], fieldName);
+    const offset = 0;
+    const limit = 10;
+    const filter = mod.filter({
+      [fieldName]: { exists: '1' }
+    });
+
+    let filteredIds;
+    let invertedFilteredIds;
+    let filteredLength;
+
+    before(function pretest() {
+      filteredIds = insertedIds.filter(jsFilter);
+      invertedFilteredIds = invertedIds.filter(jsFilter);
+      filteredLength = filteredIds.length;
+    });
+
+    it('sorts: asc', function test() {
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter)
+        .tap(sortedBy(comparatorASC, filteredLength));
+    });
+
+    it('sorts: desc', function test() {
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'DESC', filter)
+        .tap(sortedBy(comparatorDESC, filteredLength));
+    });
+
+    it('pagination: asc', function test() {
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, offset, limit)
+        .tap(sortedBy(comparatorASC, filteredLength))
+        .then(ids => {
+          expect(ids).to.have.length.of(limit);
+          expect(ids).to.be.deep.eq(filteredIds.slice(offset, offset + limit));
+        });
+    });
+
+    it('pagination: desc', function test() {
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'DESC', filter, offset, limit)
+        .tap(sortedBy(comparatorDESC, filteredLength))
+        .then(ids => {
+          expect(ids).to.have.length.of(limit);
+          expect(ids).to.be.deep.eq(invertedFilteredIds.slice(offset, offset + limit));
+        });
+    });
+  });
+
+  describe('filter/isempty', function sortFilterExistsEmptySuite() {
+    const fieldName = 'fieldExists';
+    const hasOwnProperty = Object.prototype.hasOwnProperty;
+    const jsFilter = id => !hasOwnProperty.call(metadata[id], fieldName);
+    const offset = 0;
+    const limit = 10;
+    const filter = mod.filter({
+      [fieldName]: { isempty: '1' }
+    });
+
+    let filteredIds;
+    let invertedFilteredIds;
+    let filteredLength;
+
+    before(function pretest() {
+      filteredIds = insertedIds.filter(jsFilter);
+      invertedFilteredIds = invertedIds.filter(jsFilter);
+      filteredLength = filteredIds.length;
+    });
+
+    it('sorts: asc', function test() {
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter)
+        .tap(sortedBy(comparatorASC, filteredLength));
+    });
+
+    it('sorts: desc', function test() {
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'DESC', filter)
+        .tap(sortedBy(comparatorDESC, filteredLength));
+    });
+
+    it('pagination: asc', function test() {
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, offset, limit)
+        .tap(sortedBy(comparatorASC, filteredLength))
+        .then(ids => {
+          expect(ids).to.have.length.of(limit);
+          expect(ids).to.be.deep.eq(filteredIds.slice(offset, offset + limit));
+        });
+    });
+
+    it('pagination: desc', function test() {
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'DESC', filter, offset, limit)
+        .tap(sortedBy(comparatorDESC, filteredLength))
+        .then(ids => {
+          expect(ids).to.have.length.of(limit);
+          expect(ids).to.be.deep.eq(invertedFilteredIds.slice(offset, offset + limit));
+        });
+    });
+  });
+
   describe('sort/id filter only', function sortFilterIdSuite() {
     const filterIdString = 'd-9';
     const jsFilter = a => a.indexOf(filterIdString) >= 0;
@@ -308,7 +414,7 @@ describe('filtered sort suite', function suite() {
     const filterIdString = 'id-';
     const name = 'an';
     const age = 15;
-    const fields = [ 'surname', 'favColor', 'email' ];
+    const fields = ['surname', 'favColor', 'email'];
     const color = 'ue';
     const jsFilter = a => {
       const meta = metadata[a];
@@ -316,8 +422,9 @@ describe('filtered sort suite', function suite() {
         meta.name.toLowerCase().indexOf(name) >= 0 &&
         meta.age >= age &&
         meta.age <= age * 3 &&
-        ld.any(ld.values(ld.pick(meta, fields)), it => it.indexOf(color) >= 0)
+        ld.some(ld.values(ld.pick(meta, fields)), it => it.indexOf(color) >= 0)
     };
+
     const offset = 10;
     const limit = 20;
     const filter = mod.filter({
