@@ -1,5 +1,5 @@
 env:
-  DOCKER_COMPOSE_VERSION: 1.5.1
+  DOCKER_COMPOSE_VERSION: 1.8.1
 
 sudo: required
 
@@ -15,4 +15,4 @@ before_install:
   - sudo mv docker-compose /usr/local/bin
 
 node_js:
-  - "5.3"
+  - "6"
