@@ -17,7 +17,6 @@ describe('filtered sort suite', function suite() {
   const insertedIds = [];
   const invertedIds = [];
   mod.attach(redis, 'fsort');
-  mod.attachBust(redis, 'fsortBust');
 
   function metadataKey(id) {
     return metaKeyPattern.replace('*', id);
