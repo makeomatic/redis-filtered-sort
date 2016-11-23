@@ -6,7 +6,7 @@ redis:
     - "6379"
 
 tester:
-  image: makeomatic/node:6.5.0
+  image: makeomatic/node:7.1.0
   links:
     - redis
   working_dir: /src
