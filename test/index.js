@@ -17,6 +17,7 @@ describe('filtered sort suite', function suite() {
   const insertedIds = [];
   const invertedIds = [];
   mod.attach(redis, 'fsort');
+  mod.attachBust(redis, 'fsortBust');
 
   function metadataKey(id) {
     return metaKeyPattern.replace('*', id);
@@ -134,6 +135,16 @@ describe('filtered sort suite', function suite() {
       tom: '20',
       berlin: '!werthechampions0%-9'
     }));
+  });
+
+  describe('cache invalidation', function invalidationSuite() {
+    it('should invalidate cache', function test() {
+      
+      return redis.fsort(idSetKey, null, null, 'ASC', '{}')
+        .tap(() => redis.fsortBust(idSetKey))
+        .then(() => redis.exists(`${mod.FSORT_TEMP_KEYSET}:${idSetKey}`))
+        .tap((exists) => expect(exists).to.be.eq(0));
+    });
   });
 
   describe('sort/pagination only', function sortSuite() {

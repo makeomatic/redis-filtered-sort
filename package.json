@@ -39,7 +39,7 @@
     "babel-plugin-syntax-async-functions": "^6.13.0",
     "babel-plugin-transform-es2015-spread": "^6.0.0",
     "babel-plugin-transform-object-rest-spread": "^6.0.0",
-    "babel-plugin-transform-strict-mode": "^6.11.3",
+    "babel-plugin-transform-strict-mode": "^6.11.3"
   },
   "dependencies": {
     "cluster-key-slot": "^1.0.6"

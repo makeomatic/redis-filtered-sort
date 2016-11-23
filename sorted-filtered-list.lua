@@ -17,6 +17,7 @@ local limit = tonumber(ARGV[5] or 10);
 local expiration = tonumber(ARGV[6] or 30000);
 
 -- local caches
+local tempKeysSet = getIndexTempKeys(idSet);
 local strlower = string.lower;
 local strfind = string.find;
 local tinsert = table.insert;
@@ -94,6 +95,12 @@ local function hashmapSize(table)
 end
 
 local function updateExpireAndReturnWithSize(key)
+  local tempKeyTTL = curTime + expiration;
+
+  -- store key in temporary zset
+  rcall("PEXPIRE", tempKeysSet, expiration);
+  rcall("ZADD", tempKeysSet, tempKeyTTL, key);
+
   rcall("PEXPIRE", key, expiration);
   local ret = rcall("LRANGE", key, offset, offset + limit - 1);
   tinsert(ret, rcall("LLEN", key));

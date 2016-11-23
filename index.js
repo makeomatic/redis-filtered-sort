@@ -1,7 +1,8 @@
 const fs = require('fs');
 const path = require('path');
-const calcSlot = require('cluster-key-slot');
+
 const lua = fs.readFileSync(path.join(__dirname, 'sorted-filtered-list.lua'));
+const fsortBust = fs.readFileSync(path.join(__dirname, 'filtered-list-bust.lua'));
 
 // cached vars
 const regexp = /[\^\$\(\)\%\.\[\]\*\+\-\?]/g;
@@ -9,14 +10,37 @@ const keys = Object.keys;
 const stringify = JSON.stringify;
 const BLACK_LIST_PROPS = ['eq', 'ne'];
 
+exports.FSORT_TEMP_KEYSET = 'fsort_temp_keys';
+
+const luaWrapper = (script) => `
+---
+
+local function getIndexTempKeys(index)
+  return "${exports.FSORT_TEMP_KEYSET}:" .. index;
+end
+
+local curTime = ${Date.now()};
+
+---
+
+${script.toString('utf-8')}
+`;
+
 /**
  * Attached .sortedFilteredList function to ioredis instance
  * @param  {ioredis} redis
  */
+const fsortScript = luaWrapper(lua);
 exports.attach = function attachToRedis(redis, _name) {
   const name = _name || 'sortedFilteredList';
-  redis.defineCommand(name, { numberOfKeys: 2, lua: lua.toString('utf-8') });
+  redis.defineCommand(name, { numberOfKeys: 2, lua: fsortScript });
 };
+
+const fsortBustScript = luaWrapper(fsortBust);
+exports.attachBust = function attachBustToRedis(redis, _name) {
+  const name = _name || 'fsort_bust';
+  redis.defineCommand(name, { numberOfKeys: 1, lua: fsortBustScript });
+}
 
 /**
  * Performs escape on a filter clause
@@ -73,42 +97,3 @@ exports.filter = function filter(obj) {
  */
 exports.script = lua;
 
-/**
- * Invalidates cached filtered list
- */
-exports.invalidate = function invalidate(redis, keyPrefix, _index) {
-  const keyPrefixLength = keyPrefix.length;
-  const index = `${keyPrefix}${_index}`;
-  const cacheKeys = [];
-  const slot = calcSlot(index);
-
-  // this has possibility of throwing, but not likely to since previous operations
-  // would've been rejected already, in a promise this will result in a rejection
-  const nodeKeys = redis.slots[slot];
-  const masterNode = nodeKeys.reduce((node, key) => node || redis.connectionPool.nodes.master[key], null);
-  const transform = (keys, prefixLength) => keys.map(key => key.slice(prefixLength));
-
-  function scan(node, cursor = '0') {
-    return node
-      .scan(cursor, 'MATCH', `${index}:*`, 'COUNT', 50)
-      .then(response => {
-        const [next, keys] = response;
-
-        if (keys.length > 0) {
-          cacheKeys.push(...transform(keys, keyPrefixLength));
-        }
-
-        if (next === '0') {
-          if (cacheKeys.length === 0) {
-            return Promise.resolve(0);
-          }
-
-          return redis.del(cacheKeys);
-        }
-
-        return scan(node, next);
-      });
-  }
-
-  return scan(masterNode);
-}
