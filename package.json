@@ -1,6 +1,6 @@
 {
   "name": "redis-filtered-sort",
-  "version": "1.4.0",
+  "version": "2.0.0",
   "description": "Exports LUA script, which is able to perform multi filter operations, as well as sorts",
   "main": "./lib/index.js",
   "scripts": {

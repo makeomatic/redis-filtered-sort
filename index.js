@@ -22,8 +22,6 @@ local function getIndexTempKeys(index)
   return "${exports.FSORT_TEMP_KEYSET}:" .. index;
 end
 
-local curTime = ${Date.now()};
-
 ---
 
 ${script.toString('utf-8')}

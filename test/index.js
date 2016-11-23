@@ -139,8 +139,8 @@ describe('filtered sort suite', function suite() {
   describe('cache invalidation', function invalidationSuite() {
     it('should invalidate cache', function test() {
       
-      return redis.fsort(idSetKey, null, null, 'ASC', '{}')
-        .tap(() => redis.fsortBust(idSetKey))
+      return redis.fsort(idSetKey, null, null, 'ASC', '{}', Date.now())
+        .tap(() => redis.fsortBust(idSetKey, Date.now()))
         .then(() => redis.exists(`${mod.FSORT_TEMP_KEYSET}:${idSetKey}`))
         .tap((exists) => expect(exists).to.be.eq(0));
     });
@@ -151,17 +151,17 @@ describe('filtered sort suite', function suite() {
     const limit = 20;
 
     it('sorts: asc', function test() {
-      return redis.fsort(idSetKey, null, null, 'ASC', '{}')
+      return redis.fsort(idSetKey, null, null, 'ASC', '{}', Date.now())
         .tap(sortedBy(comparatorASC, prepopulateDataLength));
     });
 
     it('sorts: desc', function test() {
-      return redis.fsort(idSetKey, null, null, 'DESC', '{}')
+      return redis.fsort(idSetKey, null, null, 'DESC', '{}', Date.now())
         .tap(sortedBy(comparatorDESC, prepopulateDataLength));
     });
 
     it('pagination: asc', function test() {
-      return redis.fsort(idSetKey, null, null, 'ASC', '{}', offset, limit)
+      return redis.fsort(idSetKey, null, null, 'ASC', '{}', Date.now(), offset, limit)
         .tap(sortedBy(comparatorASC, prepopulateDataLength))
         .then(ids => {
           expect(ids).to.have.length.of(20);
@@ -170,7 +170,7 @@ describe('filtered sort suite', function suite() {
     });
 
     it('pagination: desc', function test() {
-      return redis.fsort(idSetKey, null, null, 'DESC', '{}', offset, limit)
+      return redis.fsort(idSetKey, null, null, 'DESC', '{}', Date.now(), offset, limit)
         .tap(sortedBy(comparatorDESC, prepopulateDataLength))
         .then(ids => {
           expect(ids).to.have.length.of(20);
@@ -200,17 +200,17 @@ describe('filtered sort suite', function suite() {
     });
 
     it('sorts: asc', function test() {
-      return redis.fsort(idSetKey, metaKeyPattern, field, 'ASC', '{}')
+      return redis.fsort(idSetKey, metaKeyPattern, field, 'ASC', '{}', Date.now())
         .tap(sortedBy(comparatorAge(1), prepopulateDataLength, field));
     });
 
     it('sorts: desc', function test() {
-      return redis.fsort(idSetKey, metaKeyPattern, field, 'DESC', '{}')
+      return redis.fsort(idSetKey, metaKeyPattern, field, 'DESC', '{}', Date.now())
         .tap(sortedBy(comparatorAge(-1), prepopulateDataLength, field));
     });
 
     it('pagination: asc', function test() {
-      return redis.fsort(idSetKey, metaKeyPattern, field, 'ASC', '{}', offset, limit)
+      return redis.fsort(idSetKey, metaKeyPattern, field, 'ASC', '{}', Date.now(), offset, limit)
         .tap(sortedBy(comparatorAge(1), prepopulateDataLength, field))
         .then(ids => {
           expect(ids).to.have.length.of(20);
@@ -219,7 +219,7 @@ describe('filtered sort suite', function suite() {
     });
 
     it('pagination: desc', function test() {
-      return redis.fsort(idSetKey, metaKeyPattern, field, 'DESC', '{}', offset, limit)
+      return redis.fsort(idSetKey, metaKeyPattern, field, 'DESC', '{}', Date.now(), offset, limit)
         .tap(sortedBy(comparatorAge(-1), prepopulateDataLength, field))
         .then(ids => {
           expect(ids).to.have.length.of(20);
@@ -249,17 +249,17 @@ describe('filtered sort suite', function suite() {
     });
 
     it('sorts: asc', function test() {
-      return redis.fsort(idSetKey, metaKeyPattern, field, 'ASC', '{}')
+      return redis.fsort(idSetKey, metaKeyPattern, field, 'ASC', '{}', Date.now())
         .tap(sortedBy(comparatorAlphanum(1), prepopulateDataLength, field));
     });
 
     it('sorts: desc', function test() {
-      return redis.fsort(idSetKey, metaKeyPattern, field, 'DESC', '{}')
+      return redis.fsort(idSetKey, metaKeyPattern, field, 'DESC', '{}', Date.now())
         .tap(sortedBy(comparatorAlphanum(-1), prepopulateDataLength, field));
     });
 
     it('pagination: asc', function test() {
-      return redis.fsort(idSetKey, metaKeyPattern, field, 'ASC', '{}', offset, limit)
+      return redis.fsort(idSetKey, metaKeyPattern, field, 'ASC', '{}', Date.now(), offset, limit)
         .tap(sortedBy(comparatorAlphanum(1), prepopulateDataLength, field))
         .then(ids => {
           expect(ids).to.have.length.of(20);
@@ -268,7 +268,7 @@ describe('filtered sort suite', function suite() {
     });
 
     it('pagination: desc', function test() {
-      return redis.fsort(idSetKey, metaKeyPattern, field, 'DESC', '{}', offset, limit)
+      return redis.fsort(idSetKey, metaKeyPattern, field, 'DESC', '{}', Date.now(), offset, limit)
         .tap(sortedBy(comparatorAlphanum(-1), prepopulateDataLength, field))
         .then(ids => {
           expect(ids).to.have.length.of(20);
@@ -298,17 +298,17 @@ describe('filtered sort suite', function suite() {
     });
 
     it('sorts: asc', function test() {
-      return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter)
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, Date.now())
         .tap(sortedBy(comparatorASC, filteredLength));
     });
 
     it('sorts: desc', function test() {
-      return redis.fsort(idSetKey, metaKeyPattern, null, 'DESC', filter)
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'DESC', filter, Date.now())
         .tap(sortedBy(comparatorDESC, filteredLength));
     });
 
     it('pagination: asc', function test() {
-      return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, offset, limit)
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, Date.now(), offset, limit)
         .tap(sortedBy(comparatorASC, filteredLength))
         .then(ids => {
           expect(ids).to.have.length.of(limit);
@@ -317,7 +317,7 @@ describe('filtered sort suite', function suite() {
     });
 
     it('pagination: desc', function test() {
-      return redis.fsort(idSetKey, metaKeyPattern, null, 'DESC', filter, offset, limit)
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'DESC', filter, Date.now(), offset, limit)
         .tap(sortedBy(comparatorDESC, filteredLength))
         .then(ids => {
           expect(ids).to.have.length.of(limit);
@@ -347,17 +347,17 @@ describe('filtered sort suite', function suite() {
     });
 
     it('sorts: asc', function test() {
-      return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter)
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, Date.now())
         .tap(sortedBy(comparatorASC, filteredLength));
     });
 
     it('sorts: desc', function test() {
-      return redis.fsort(idSetKey, metaKeyPattern, null, 'DESC', filter)
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'DESC', filter, Date.now())
         .tap(sortedBy(comparatorDESC, filteredLength));
     });
 
     it('pagination: asc', function test() {
-      return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, offset, limit)
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, Date.now(), offset, limit)
         .tap(sortedBy(comparatorASC, filteredLength))
         .then(ids => {
           expect(ids).to.have.length.of(limit);
@@ -366,7 +366,7 @@ describe('filtered sort suite', function suite() {
     });
 
     it('pagination: desc', function test() {
-      return redis.fsort(idSetKey, metaKeyPattern, null, 'DESC', filter, offset, limit)
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'DESC', filter, Date.now(), offset, limit)
         .tap(sortedBy(comparatorDESC, filteredLength))
         .then(ids => {
           expect(ids).to.have.length.of(limit);
@@ -392,17 +392,17 @@ describe('filtered sort suite', function suite() {
     });
 
     it('sorts: asc', function test() {
-      return redis.fsort(idSetKey, null, null, 'ASC', filter)
+      return redis.fsort(idSetKey, null, null, 'ASC', filter, Date.now())
         .tap(sortedBy(comparatorASC, filteredLength));
     });
 
     it('sorts: desc', function test() {
-      return redis.fsort(idSetKey, null, null, 'DESC', filter)
+      return redis.fsort(idSetKey, null, null, 'DESC', filter, Date.now())
         .tap(sortedBy(comparatorDESC, filteredLength));
     });
 
     it('pagination: asc', function test() {
-      return redis.fsort(idSetKey, null, null, 'ASC', filter, offset, limit)
+      return redis.fsort(idSetKey, null, null, 'ASC', filter, Date.now(), offset, limit)
         .tap(sortedBy(comparatorASC, filteredLength))
         .then(ids => {
           expect(ids).to.have.length.of(20);
@@ -411,7 +411,7 @@ describe('filtered sort suite', function suite() {
     });
 
     it('pagination: desc', function test() {
-      return redis.fsort(idSetKey, null, null, 'DESC', filter, offset, limit)
+      return redis.fsort(idSetKey, null, null, 'DESC', filter, Date.now(), offset, limit)
         .tap(sortedBy(comparatorDESC, filteredLength))
         .then(ids => {
           expect(ids).to.have.length.of(20);
@@ -454,17 +454,17 @@ describe('filtered sort suite', function suite() {
     });
 
     it('sorts: asc', function test() {
-      return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter)
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, Date.now())
         .tap(sortedBy(comparatorASC, filteredLength));
     });
 
     it('sorts: desc', function test() {
-      return redis.fsort(idSetKey, metaKeyPattern, null, 'DESC', filter)
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'DESC', filter, Date.now())
         .tap(sortedBy(comparatorDESC, filteredLength));
     });
 
     it('pagination: asc', function test() {
-      return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, offset, limit)
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, Date.now(), offset, limit)
         .tap(sortedBy(comparatorASC, filteredLength))
         .then(ids => {
           expect(ids).to.be.deep.eq(filteredIds.slice(offset, offset + limit));
@@ -472,7 +472,7 @@ describe('filtered sort suite', function suite() {
     });
 
     it('pagination: desc', function test() {
-      return redis.fsort(idSetKey, metaKeyPattern, null, 'DESC', filter, offset, limit)
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'DESC', filter, Date.now(), offset, limit)
         .tap(sortedBy(comparatorDESC, filteredLength))
         .then(ids => {
           expect(ids).to.be.deep.eq(invertedFilteredIds.slice(offset, offset + limit));

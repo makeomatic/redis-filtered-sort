@@ -1,7 +1,8 @@
--- 
+-- must be a set of ids
 local idSet = KEYS[1];
-
---
+-- current time
+local curTime = ARGV[1];
+-- caching time
 local expiration = tonumber(ARGV[2] or 30000);
 
 --

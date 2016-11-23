@@ -9,12 +9,14 @@ local hashKey = ARGV[1];
 local order = ARGV[2];
 -- stringified instructions for filtering
 local filter = ARGV[3];
+-- current time
+local curTime = ARGV[4];
 -- pagination offset
-local offset = tonumber(ARGV[4] or 0);
+local offset = tonumber(ARGV[5] or 0);
 -- limit of items to return in a single call
-local limit = tonumber(ARGV[5] or 10);
+local limit = tonumber(ARGV[6] or 10);
 -- caching time
-local expiration = tonumber(ARGV[6] or 30000);
+local expiration = tonumber(ARGV[7] or 30000);
 
 -- local caches
 local tempKeysSet = getIndexTempKeys(idSet);
