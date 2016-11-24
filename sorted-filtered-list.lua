@@ -149,6 +149,8 @@ local PSSKey = tcontact(preSortedSetKeys, ":");
 if rcall("EXISTS", FFLKey) == 1 then
   -- also extend live of the underlaying key
   rcall("PEXPIRE", PSSKey, expiration);
+  storeCacheBuster(PSSKey);
+  -- and ready from existing key now
   return updateExpireAndReturnWithSize(FFLKey);
 end
 
