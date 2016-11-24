@@ -11,5 +11,5 @@ local keys = redis.call("ZRANGEBYSCORE", tempKeysSet, curTime - expiration, '+in
 
 if #keys > 0 then
   redis.call("DEL", unpack(keys));
-  redis.del(tempKeysSet);
+  redis.call("DEL", tempKeysSet);
 end
