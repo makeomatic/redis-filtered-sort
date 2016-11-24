@@ -9,7 +9,11 @@ const ld = require('lodash');
 describe('filtered sort suite', function suite() {
   const idSetKey = 'id-set';
   const metaKeyPattern = '*-metadata';
-  const redis = new Redis(process.env.REDIS_PORT_6379_TCP_PORT, process.env.REDIS_PORT_6379_TCP_ADDR);
+  const redis = new Redis({
+    port: process.env.REDIS_PORT_6379_TCP_PORT,
+    host: process.env.REDIS_PORT_6379_TCP_ADDR,
+    keyPrefix: 'fsort-test:',
+  });
   const monitor = redis.duplicate();
   const mod = require('../index.js');
   const prepopulateDataLength = parseInt(process.env.PREPOPULAR || 1000, 10);
