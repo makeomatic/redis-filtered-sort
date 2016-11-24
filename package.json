@@ -1,11 +1,11 @@
 {
   "name": "redis-filtered-sort",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Exports LUA script, which is able to perform multi filter operations, as well as sorts",
   "main": "./lib/index.js",
   "scripts": {
     "test": "./test/docker.sh",
-    "compile": "rm -rf ./lib; babel -d ./lib index.js",
+    "compile": "make all",
     "prepublish": "npm run compile"
   },
   "repository": {
