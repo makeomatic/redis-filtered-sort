@@ -140,9 +140,17 @@ describe('filtered sort suite', function suite() {
     it('should invalidate cache', function test() {
       
       return redis.fsort(idSetKey, null, null, 'ASC', '{}', Date.now())
+        .then(() => redis.zrangebyscore(`${idSetKey}::${mod.FSORT_TEMP_KEYSET}`, '-inf', '+inf'))
+        .tap(keys => expect(keys.length).to.be.eq(2))
         .tap(() => redis.fsortBust(idSetKey, Date.now()))
-        .then(() => redis.exists(`${mod.FSORT_TEMP_KEYSET}:${idSetKey}`))
-        .tap((exists) => expect(exists).to.be.eq(0));
+        .then(keys => Promise.join(
+           redis.zcard(`${idSetKey}::${mod.FSORT_TEMP_KEYSET}`),
+           redis.exists(keys)
+        ))
+        .spread((cardinality, keys) => {
+           expect(cardinality).to.be.eq(0);
+           expect(keys).to.be.eq(0);
+        });
     });
   });
 
