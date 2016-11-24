@@ -137,9 +137,29 @@ describe('filtered sort suite', function suite() {
   });
 
   describe('cache invalidation', function invalidationSuite() {
-    it('should invalidate cache', function test() {
+    it('should invalidate cache: sort', function test() {
       
       return redis.fsort(idSetKey, null, null, 'ASC', '{}', Date.now())
+        .then(() => redis.zrangebyscore(`${idSetKey}::${mod.FSORT_TEMP_KEYSET}`, '-inf', '+inf'))
+        .tap(keys => expect(keys.length).to.be.eq(1))
+        .tap(() => redis.fsortBust(idSetKey, Date.now()))
+        .then(keys => Promise.join(
+           redis.zcard(`${idSetKey}::${mod.FSORT_TEMP_KEYSET}`),
+           redis.exists(keys)
+        ))
+        .spread((cardinality, keys) => {
+           expect(cardinality).to.be.eq(0);
+           expect(keys).to.be.eq(0);
+        });
+    });
+    
+    it('should invalidate cache: sort + filter', function test() {
+       const fieldName = 'fieldExists';
+       const filter = mod.filter({
+        [fieldName]: { exists: '1' }
+       });
+
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, Date.now())
         .then(() => redis.zrangebyscore(`${idSetKey}::${mod.FSORT_TEMP_KEYSET}`, '-inf', '+inf'))
         .tap(keys => expect(keys.length).to.be.eq(2))
         .tap(() => redis.fsortBust(idSetKey, Date.now()))
