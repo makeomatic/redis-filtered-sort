@@ -19,7 +19,7 @@ const luaWrapper = (script) => `
 ---
 
 local function getIndexTempKeys(index)
-  return "${exports.FSORT_TEMP_KEYSET}:" .. index;
+  return index .. "::${exports.FSORT_TEMP_KEYSET}";
 end
 
 ---
