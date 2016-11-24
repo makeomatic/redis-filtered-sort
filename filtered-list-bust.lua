@@ -7,7 +7,7 @@ local expiration = tonumber(ARGV[2] or 30000);
 
 --
 local tempKeysSet = getIndexTempKeys(idSet);
-local keys = redis.call("ZRANGEBYSCORE", tempKeysSet, curTime - expiration, curTime);
+local keys = redis.call("ZRANGEBYSCORE", tempKeysSet, curTime - expiration, '+inf');
 
 if #keys > 0 then
   redis.call("DEL", unpack(keys));
