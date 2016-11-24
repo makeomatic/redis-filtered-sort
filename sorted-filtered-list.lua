@@ -96,13 +96,16 @@ local function hashmapSize(table)
   return numItems;
 end
 
-local function updateExpireAndReturnWithSize(key)
+local function storeCacheBuster(key)
   local tempKeyTTL = curTime + expiration;
 
   -- store key in temporary zset
   rcall("PEXPIRE", tempKeysSet, expiration);
   rcall("ZADD", tempKeysSet, tempKeyTTL, key);
-
+end
+  
+local function updateExpireAndReturnWithSize(key)
+  storeCacheBuster(key);
   rcall("PEXPIRE", key, expiration);
   local ret = rcall("LRANGE", key, offset, offset + limit - 1);
   tinsert(ret, rcall("LLEN", key));
@@ -144,6 +147,8 @@ local PSSKey = tcontact(preSortedSetKeys, ":");
 
 -- do we have existing filtered set?
 if rcall("EXISTS", FFLKey) == 1 then
+  -- also extend live of the underlaying key
+  rcall("PEXPIRE", PSSKey, expiration);
   return updateExpireAndReturnWithSize(FFLKey);
 end
 
@@ -220,6 +225,7 @@ if rcall("EXISTS", PSSKey) == 0 then
   if #valuesToSort > 0 then
     massive_redis_command("RPUSH", PSSKey, valuesToSort);
     rcall("PEXPIRE", PSSKey, expiration);
+    storeCacheBuster(PSSKey);
   else
     return {0};
   end
@@ -240,6 +246,7 @@ else
   -- populate in-memory data
   -- update expiration timer
   rcall("PEXPIRE", PSSKey, expiration);
+  storeCacheBuster(PSSKey);
   valuesToSort = rcall("LRANGE", PSSKey, 0, -1);
 end
 
