@@ -148,7 +148,8 @@ if rcall("EXISTS", PSSKey) == 0 then
     local arr = {};
     for i,v in pairs(valuesToSort) do
       local metaKey = metadataKey:gsub("*", v, 1);
-      arr[v] = rcall("HGET", metaKey, hashKey);
+      -- defaults to empty string to avoid sorting problems
+      arr[v] = rcall("HGET", metaKey, hashKey) or '';
     end
 
     local function sortFuncASC(a, b)
