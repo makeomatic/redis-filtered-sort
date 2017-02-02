@@ -9,14 +9,17 @@ local hashKey = ARGV[1];
 local order = ARGV[2];
 -- stringified instructions for filtering
 local filter = ARGV[3];
+-- current time
+local curTime = ARGV[4];
 -- pagination offset
-local offset = tonumber(ARGV[4] or 0);
+local offset = tonumber(ARGV[5] or 0);
 -- limit of items to return in a single call
-local limit = tonumber(ARGV[5] or 10);
+local limit = tonumber(ARGV[6] or 10);
 -- caching time
-local expiration = tonumber(ARGV[6] or 30000);
+local expiration = tonumber(ARGV[7] or 30000);
 
 -- local caches
+local tempKeysSet = getIndexTempKeys(idSet);
 local strlower = string.lower;
 local strfind = string.find;
 local tinsert = table.insert;
@@ -93,7 +96,16 @@ local function hashmapSize(table)
   return numItems;
 end
 
+local function storeCacheBuster(key)
+  local tempKeyTTL = curTime + expiration;
+
+  -- store key in temporary zset
+  rcall("PEXPIRE", tempKeysSet, expiration);
+  rcall("ZADD", tempKeysSet, tempKeyTTL, key);
+end
+
 local function updateExpireAndReturnWithSize(key)
+  storeCacheBuster(key);
   rcall("PEXPIRE", key, expiration);
   local ret = rcall("LRANGE", key, offset, offset + limit - 1);
   tinsert(ret, rcall("LLEN", key));
@@ -135,6 +147,10 @@ local PSSKey = tcontact(preSortedSetKeys, ":");
 
 -- do we have existing filtered set?
 if rcall("EXISTS", FFLKey) == 1 then
+  -- also extend live of the underlaying key
+  rcall("PEXPIRE", PSSKey, expiration);
+  storeCacheBuster(PSSKey);
+  -- and ready from existing key now
   return updateExpireAndReturnWithSize(FFLKey);
 end
 
@@ -212,6 +228,7 @@ if rcall("EXISTS", PSSKey) == 0 then
   if #valuesToSort > 0 then
     massive_redis_command("RPUSH", PSSKey, valuesToSort);
     rcall("PEXPIRE", PSSKey, expiration);
+    storeCacheBuster(PSSKey);
   else
     return {0};
   end
@@ -232,6 +249,7 @@ else
   -- populate in-memory data
   -- update expiration timer
   rcall("PEXPIRE", PSSKey, expiration);
+  storeCacheBuster(PSSKey);
   valuesToSort = rcall("LRANGE", PSSKey, 0, -1);
 end
 
