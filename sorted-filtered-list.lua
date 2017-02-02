@@ -168,12 +168,15 @@ if rcall("EXISTS", PSSKey) == 0 then
       arr[v] = rcall("HGET", metaKey, hashKey) or '';
     end
 
+    -- false implies that items stay in place
+    -- means when they are the same - they must return false
+
     local function sortFuncASC(a, b)
       local sortA = arr[a];
       local sortB = arr[b];
 
       if isempty(sortA) and isempty(sortB) then
-        return true;
+        return false;
       elseif isempty(sortA) then
         return false;
       elseif isempty(sortB) then
