@@ -1,5 +1,7 @@
 # redis-filtered-sort
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/makeomatic/redis-filtered-sort.svg)](https://greenkeeper.io/)
+
 [![Build Status](https://travis-ci.org/makeomatic/redis-filtered-sort.svg)](https://travis-ci.org/makeomatic/redis-filtered-sort)
 
 Exports LUA script, which is able to perform multi filter operations, as well as sorts
