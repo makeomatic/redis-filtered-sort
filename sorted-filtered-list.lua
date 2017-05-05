@@ -17,6 +17,8 @@ local offset = tonumber(ARGV[5] or 0);
 local limit = tonumber(ARGV[6] or 10);
 -- caching time
 local expiration = tonumber(ARGV[7] or 30000);
+-- return the key only
+local returnKeyOnly = ARGV[8] or false;
 
 -- local caches
 local tempKeysSet = getIndexTempKeys(idSet);
@@ -109,7 +111,11 @@ local function updateExpireAndReturnWithSize(key)
   rcall("PEXPIRE", key, expiration);
   local ret = rcall("LRANGE", key, offset, offset + limit - 1);
   tinsert(ret, rcall("LLEN", key));
-  return ret;
+  if returnKeyOnly == false then
+    return ret;
+  else
+    return key;
+  end
 end
 
 -- create filtered list name
