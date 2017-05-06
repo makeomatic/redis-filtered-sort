@@ -17,6 +17,8 @@ local offset = tonumber(ARGV[5] or 0);
 local limit = tonumber(ARGV[6] or 10);
 -- caching time
 local expiration = tonumber(ARGV[7] or 30000);
+-- return the key only
+local returnKeyOnly = ARGV[8] or false;
 
 -- local caches
 local tempKeysSet = getIndexTempKeys(idSet);
@@ -105,8 +107,17 @@ local function storeCacheBuster(key)
 end
 
 local function updateExpireAndReturnWithSize(key)
+  -- stores key for cache busting
   storeCacheBuster(key);
+
+  -- lengthens cache
   rcall("PEXPIRE", key, expiration);
+
+  -- returns either results or key where it's stored
+  if returnKeyOnly ~= false then
+    return key;
+  end
+
   local ret = rcall("LRANGE", key, offset, offset + limit - 1);
   tinsert(ret, rcall("LLEN", key));
   return ret;

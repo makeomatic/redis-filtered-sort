@@ -9,10 +9,11 @@ const ld = require('lodash');
 describe('filtered sort suite', function suite() {
   const idSetKey = 'id-set';
   const metaKeyPattern = '*-metadata';
+  const keyPrefix = 'fsort-test:';
   const redis = new Redis({
     port: process.env.REDIS_PORT_6379_TCP_PORT,
     host: process.env.REDIS_PORT_6379_TCP_ADDR,
-    keyPrefix: 'fsort-test:',
+    keyPrefix,
   });
   const monitor = redis.duplicate();
   const mod = require('../index.js');
@@ -142,7 +143,7 @@ describe('filtered sort suite', function suite() {
 
   describe('cache invalidation', function invalidationSuite() {
     it('should invalidate cache: sort', function test() {
-      
+
       return redis.fsort(idSetKey, null, null, 'ASC', '{}', Date.now())
         .then(() => redis.zrangebyscore(`${idSetKey}::${mod.FSORT_TEMP_KEYSET}`, '-inf', '+inf'))
         .tap(keys => expect(keys.length).to.be.eq(1))
@@ -156,7 +157,7 @@ describe('filtered sort suite', function suite() {
            expect(keys).to.be.eq(0);
         });
     });
-    
+
     it('should invalidate cache: sort + filter', function test() {
        const fieldName = 'fieldExists';
        const filter = mod.filter({
@@ -508,6 +509,36 @@ describe('filtered sort suite', function suite() {
         .tap(sortedBy(comparatorDESC, filteredLength))
         .then(ids => {
           expect(ids).to.be.deep.eq(invertedFilteredIds.slice(offset, offset + limit));
+        });
+    });
+  });
+
+  describe('aggregate filter', function suite() {
+    it('sums up age and returns key', function test() {
+      const filter = mod.filter({
+        age: { gte: 10, lte: 40 },
+      });
+
+      return redis
+        .fsort(idSetKey, metaKeyPattern, 'age', 'DESC', filter, Date.now(), 0, 0, 30000, 1)
+        .then((response) => {
+          // key where the resulting data is stored
+          expect(response).to.be.equal('fsort-test:id-set:DESC:fsort-test:*-metadata:age:{"age":{"gte":10,"lte":40}}');
+          this.response = response;
+        });
+    });
+
+    it('returns aggregate', function test() {
+      const aggregate = mod.filter({
+        age: 'sum',
+      });
+
+      return redis
+        .fsortAggregate(this.response.slice(keyPrefix.length), metaKeyPattern, aggregate)
+        .then(JSON.parse)
+        .then((response) => {
+          // this would average to 15000+ due to random ranges
+          expect(response.age).to.be.gt(15000);
         });
     });
   });
