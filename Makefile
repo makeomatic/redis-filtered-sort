@@ -3,7 +3,7 @@ BABEL := ./node_modules/.bin/babel
 THIS_FILE := $(lastword $(MAKEFILE_LIST))
 
 BUILD_DIR := ./lib
-SOURCES := index.js filtered-list-bust.lua sorted-filtered-list.lua
+SOURCES := index.js filtered-list-bust.lua sorted-filtered-list.lua groupped-list.lua
 
 $(BUILD_DIR)/%.js: %.js
 		$(BABEL) $*.js -d $@
