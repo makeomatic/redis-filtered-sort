@@ -107,15 +107,20 @@ local function storeCacheBuster(key)
 end
 
 local function updateExpireAndReturnWithSize(key)
+  -- stores key for cache busting
   storeCacheBuster(key);
+
+  -- lengthens cache
   rcall("PEXPIRE", key, expiration);
-  local ret = rcall("LRANGE", key, offset, offset + limit - 1);
-  tinsert(ret, rcall("LLEN", key));
-  if returnKeyOnly == false then
-    return ret;
-  else
+
+  -- returns either results or key where it's stored
+  if returnKeyOnly ~= false then
     return key;
   end
+
+  local ret = rcall("LRANGE", key, offset, offset + limit - 1);
+  tinsert(ret, rcall("LLEN", key));
+  return ret;
 end
 
 -- create filtered list name

@@ -6,6 +6,7 @@ const snakeCase = require('lodash/snakeCase');
 
 const lua = fs.readFileSync(path.join(__dirname, 'sorted-filtered-list.lua'));
 const fsortBust = fs.readFileSync(path.join(__dirname, 'filtered-list-bust.lua'));
+const aggregateScript = fs.readFileSync(path.join(__dirname, 'groupped-list.lua'));
 
 // cached vars
 const regexp = /[\^\$\(\)\%\.\[\]\*\+\-\?]/g;
@@ -37,9 +38,11 @@ const fsortBustScript = luaWrapper(fsortBust);
 exports.attach = function attachToRedis(redis, _name, useSnakeCase = false) {
   const name = _name || 'sortedFilteredList';
   const bustName = (useSnakeCase ? snakeCase : camelCase)(`${name}Bust`);
+  const aggregateName = (useSnakeCase ? snakeCase : camelCase)(`${name}Aggregate`);
 
   redis.defineCommand(name, { numberOfKeys: 2, lua: fsortScript });
   redis.defineCommand(bustName, { numberOfKeys: 1, lua: fsortBustScript });
+  redis.defineCommand(aggregateName, { numberOfKeys: 2, lua: aggregateScript });
 };
 
 /**
@@ -96,4 +99,3 @@ exports.filter = function filter(obj) {
  * @type {Buffer}
  */
 exports.script = lua;
-

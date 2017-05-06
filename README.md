@@ -39,8 +39,10 @@ const sortBy = 'priority';
 const expiration = 30000; // ms
 
 // perform op
+const currentTime = Date.now();
+
 redis
-  .fsort('set-of-ids', 'metadata*', sortBy, 'DESC', filter, offset, limit, expiration)
+  .fsort('set-of-ids', 'metadata*', sortBy, 'DESC', filter, currentTime, offset, limit, expiration)
   .then(data => {
     // how many items in the complete list
     // rest of the data is ids from the 'set-of-ids'
@@ -55,4 +57,18 @@ redis
       });
     });
   });
+```
+
+### Aggregate functions
+
+1. use fsort to generate list of ids
+2. pass that id to aggregate function and receive results back
+
+```js
+redis
+  .fsortAggregate(ID_LIST_KEY, META_KEY_PATTERN, mod.filter({
+    age: 'sum'
+  }))
+  .then(JSON.parse)
+  .get('age')
 ```

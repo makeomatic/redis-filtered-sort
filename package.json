@@ -1,8 +1,11 @@
 {
   "name": "redis-filtered-sort",
-  "version": "2.0.6",
+  "version": "2.1.0",
   "description": "Exports LUA script, which is able to perform multi filter operations, as well as sorts",
   "main": "./lib",
+  "engine": {
+    "node": ">= 7.6.0"
+  },
   "scripts": {
     "test": "./test/docker.sh",
     "compile": "make all",
@@ -27,20 +30,18 @@
   },
   "homepage": "https://github.com/makeomatic/redis-filtered-sort#readme",
   "peerDependencies": {
-    "ioredis": "1.x.x || 2.x.x"
+    "ioredis": "2.x.x || 3.x.x"
   },
   "devDependencies": {
-    "babel-register": "^6.16.3",
+    "babel-cli": "^6.24.1",
+    "babel-plugin-transform-object-rest-spread": "^6.23.0",
+    "babel-plugin-transform-strict-mode": "^6.24.1",
+    "babel-register": "^6.24.1",
     "chai": "^3.4.1",
-    "faker": "^3.0.1",
+    "faker": "^4.1.0",
     "ioredis": "^2.4.0",
     "lodash": "^4.16.3",
-    "mocha": "^3.1.0",
-    "babel-cli": "^6.14.0",
-    "babel-plugin-syntax-async-functions": "^6.13.0",
-    "babel-plugin-transform-es2015-spread": "^6.0.0",
-    "babel-plugin-transform-object-rest-spread": "^6.0.0",
-    "babel-plugin-transform-strict-mode": "^6.11.3"
+    "mocha": "^3.3.0"
   },
   "dependencies": {
     "cluster-key-slot": "^1.0.6"
