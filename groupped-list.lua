@@ -13,6 +13,19 @@ local jsonAggregates = cjson.decode(aggregates);
 local aggregateKeys = {};
 local result = {};
 
+local function try(what)
+  local status, result = pcall(what[1]);
+  if not status then
+    return what[2](result);
+  end
+
+  return result;
+end
+
+local function catch(what)
+  return what[1]
+end
+
 local function anynumber(a)
   return try {
     function()
