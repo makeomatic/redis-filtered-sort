@@ -44,7 +44,7 @@ end
 local function aggregateSum(value1, value2)
   local num1 = anynumber(value1) or 0;
   local num2 = anynumber(value2) or 0;
-  return value1 + value2;
+  return num1 + num2;
 end
 
 local aggregateType = {
