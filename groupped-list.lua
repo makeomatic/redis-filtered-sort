@@ -13,9 +13,24 @@ local jsonAggregates = cjson.decode(aggregates);
 local aggregateKeys = {};
 local result = {};
 
+local function anynumber(a)
+  return try {
+    function()
+      local num = tonumber(a);
+      return num ~= nil and num or tonumber(cjson.decode(a));
+    end,
+
+    catch {
+      function()
+        return nil;
+      end
+    }
+  }
+end
+
 local function aggregateSum(value1, value2)
-  value1 = value1 or 0;
-  value2 = value2 or 0;
+  local num1 = anynumber(value1) or 0;
+  local num2 = anynumber(value2) or 0;
   return value1 + value2;
 end
 
