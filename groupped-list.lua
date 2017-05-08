@@ -42,9 +42,7 @@ local function anynumber(a)
 end
 
 local function aggregateSum(value1, value2)
-  local num1 = anynumber(value1) or 0;
-  local num2 = anynumber(value2) or 0;
-  return num1 + num2;
+  return value1 + value2;
 end
 
 local aggregateType = {
@@ -73,7 +71,7 @@ for _, id in ipairs(valuesToGroup) do
 
   for i, aggregateKey in ipairs(aggregateKeys) do
     local aggregateMethod = aggregateType[jsonAggregates[aggregateKey]];
-    local value = tonumber(values[i] or 0);
+    local value = anynumber(values[i]) or 0;
     result[aggregateKey] = aggregateMethod(result[aggregateKey], value);
   end
 end
