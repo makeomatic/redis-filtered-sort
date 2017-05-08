@@ -244,10 +244,20 @@ if rcall("EXISTS", PSSKey) == 0 then
     rcall("PEXPIRE", PSSKey, expiration);
     storeCacheBuster(PSSKey);
   else
+    -- returns either results or key where it's stored
+    if returnKeyOnly ~= false then
+      return PSSKey;
+    end
+
     return {0};
   end
 
   if FFLKey == PSSKey then
+    -- returns either results or key where it's stored
+    if returnKeyOnly ~= false then
+      return PSSKey;
+    end
+
     -- early return if we have no filter
     local ret = subrange(valuesToSort, offset, offset + limit);
     tinsert(ret, #valuesToSort);
