@@ -289,6 +289,20 @@ local function filterString(value, filter)
   return strfind(strlower(value), strlower(filter)) ~= nil;
 end
 
+local function some(value, filter)
+  if isempty(value) then
+    return false;
+  end
+
+  for _, fieldValue in pairs(filter) do
+    if eq(value, fieldValue) then
+      return true
+    end
+  end
+
+  return false;
+end
+
 -- filter: gte
 local function gte(value, filter)
   if isempty(value) then
@@ -329,7 +343,8 @@ local opType = {
   eq = eq,
   ne = ne,
   exists = exists,
-  isempty = isempty
+  isempty = isempty,
+  some = some
 };
 
 local function filter(op, opFilter, fieldValue)
@@ -409,9 +424,15 @@ else
   end
 end
 
+-- if output is more tha 0 - save data and return it
 if #output > 0 then
   massive_redis_command("RPUSH", FFLKey, output);
   return updateExpireAndReturnWithSize(FFLKey);
-else
-  return {0};
 end
+
+-- returns either results or key where it's stored
+if returnKeyOnly ~= false then
+  return FFLKey;
+end
+
+return {0};
