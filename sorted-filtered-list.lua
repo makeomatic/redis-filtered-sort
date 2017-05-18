@@ -289,6 +289,12 @@ local function filterString(value, filter)
   return strfind(strlower(value), strlower(filter)) ~= nil;
 end
 
+-- filter: eq
+local function eq(value, filter)
+  return value == filter;
+end
+
+-- filter: some
 local function some(value, filter)
   if isempty(value) then
     return false;
@@ -319,11 +325,6 @@ local function lte(value, filter)
   end
 
   return isnumber(value) <= filter;
-end
-
--- filter: eq
-local function eq(value, filter)
-  return value == filter;
 end
 
 -- filter: not equal
