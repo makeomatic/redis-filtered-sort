@@ -31,6 +31,9 @@ local rcall = redis.call;
 local unpack = unpack;
 local pairs = pairs;
 
+-- declaring to use later
+local filterType;
+
 local function catch(what)
   return what[1]
 end
@@ -332,8 +335,20 @@ local function ne(value, filter)
   return value ~= filter;
 end
 
+-- filter: exists
 local function exists(value, filter)
   return isempty(value) == false;
+end
+
+-- filter: any
+local function any(fieldValue, filter)
+  for _, filterValue in pairs(filter) do
+    if filterType[type(filterValue)](fieldValue, filterValue) then
+      return true;
+    end
+  end
+
+  return false;
 end
 
 -- supported op type table
@@ -345,10 +360,11 @@ local opType = {
   ne = ne,
   exists = exists,
   isempty = isempty,
-  some = some
+  some = some,
+  any = any,
 };
 
-local function filter(op, opFilter, fieldValue)
+function filter(op, opFilter, fieldValue)
   local thunk = opType[op];
   if type(thunk) ~= "function" then
     return error("not supported op: " .. op);
@@ -368,7 +384,7 @@ local function tableFilter(valueToFilter, filterValue)
   return true;
 end
 
-local filterType = {
+filterType = {
   table = tableFilter,
   string = filterString
 };

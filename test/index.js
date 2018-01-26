@@ -408,6 +408,62 @@ describe('filtered sort suite', function suite() {
     });
   });
 
+  describe('filter/any', function sortFilterExistsEmptySuite() {
+    const fieldName = 'age';
+    const hasOwnProperty = Object.prototype.hasOwnProperty;
+    const jsFilter = id => {
+      const userAge = metadata[id][fieldName];
+      return ((userAge >= 10 && userAge <= 18) ||
+        (userAge >= 35 && userAge <= 45));
+    };
+    const offset = 0;
+    const limit = 10;
+    const filter = mod.filter({
+      [fieldName]: { any: [
+        { gte: 10, lte: 18 },
+        { gte: 35, lte: 45 },
+      ]}
+    });
+
+    let filteredIds;
+    let invertedFilteredIds;
+    let filteredLength;
+
+    before(function pretest() {
+      filteredIds = insertedIds.filter(jsFilter);
+      invertedFilteredIds = invertedIds.filter(jsFilter);
+      filteredLength = filteredIds.length;
+    });
+
+    it('sorts: asc', function test() {
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, Date.now())
+        .tap(sortedBy(comparatorASC, filteredLength));
+    });
+
+    it('sorts: desc', function test() {
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'DESC', filter, Date.now())
+        .tap(sortedBy(comparatorDESC, filteredLength));
+    });
+
+    it('pagination: asc', function test() {
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, Date.now(), offset, limit)
+        .tap(sortedBy(comparatorASC, filteredLength))
+        .then(ids => {
+          expect(ids).to.have.length.of(limit);
+          expect(ids).to.be.deep.eq(filteredIds.slice(offset, offset + limit));
+        });
+    });
+
+    it('pagination: desc', function test() {
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'DESC', filter, Date.now(), offset, limit)
+        .tap(sortedBy(comparatorDESC, filteredLength))
+        .then(ids => {
+          expect(ids).to.have.length.of(limit);
+          expect(ids).to.be.deep.eq(invertedFilteredIds.slice(offset, offset + limit));
+        });
+    });
+  });
+
   describe('sort/id filter only', function sortFilterIdSuite() {
     const filterIdString = 'd-9';
     const jsFilter = a => a.indexOf(filterIdString) >= 0;
