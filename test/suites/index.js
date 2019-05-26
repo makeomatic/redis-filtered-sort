@@ -7,6 +7,8 @@ const faker = require('faker');
 const ld = require('lodash');
 
 describe('filtered sort suite', function suite() {
+  Redis.Promise = Promise;
+
   const idSetKey = 'id-set';
   const metaKeyPattern = '*-metadata';
   const keyPrefix = 'fsort-test:';
@@ -16,7 +18,7 @@ describe('filtered sort suite', function suite() {
     keyPrefix,
   });
   const monitor = redis.duplicate();
-  const mod = require('../index.js');
+  const mod = require('../../index');
   const prepopulateDataLength = parseInt(process.env.PREPOPULAR || 1000, 10);
   const metadata = {};
   const insertedIds = [];
@@ -104,12 +106,13 @@ describe('filtered sort suite', function suite() {
         });
       });
     });
-
-    after('monitor', function aftertest() {
-      redis.quit();
-      monitor.quit();
-    });
   }
+
+  after('close redis', async () => {
+    await redis.disconnect();
+    await monitor.disconnect();
+    console.info('done');
+  });
 
   it('filter escaping', function test() {
     expect(mod.filter({
@@ -197,7 +200,7 @@ describe('filtered sort suite', function suite() {
       return redis.fsort(idSetKey, null, null, 'ASC', '{}', Date.now(), offset, limit)
         .tap(sortedBy(comparatorASC, prepopulateDataLength))
         .then(ids => {
-          expect(ids).to.have.length.of(20);
+          expect(ids).to.have.lengthOf(20);
           expect(ids).to.be.deep.eq(insertedIds.slice(offset, offset + limit));
         });
     });
@@ -206,7 +209,7 @@ describe('filtered sort suite', function suite() {
       return redis.fsort(idSetKey, null, null, 'DESC', '{}', Date.now(), offset, limit)
         .tap(sortedBy(comparatorDESC, prepopulateDataLength))
         .then(ids => {
-          expect(ids).to.have.length.of(20);
+          expect(ids).to.have.lengthOf(20);
           expect(ids).to.be.deep.eq(invertedIds.slice(offset, offset + limit));
         });
     });
@@ -246,7 +249,7 @@ describe('filtered sort suite', function suite() {
       return redis.fsort(idSetKey, metaKeyPattern, field, 'ASC', '{}', Date.now(), offset, limit)
         .tap(sortedBy(comparatorAge(1), prepopulateDataLength, field))
         .then(ids => {
-          expect(ids).to.have.length.of(20);
+          expect(ids).to.have.lengthOf(20);
           expect(ids.map(map)).to.be.deep.eq(externallySortedIdsASC.slice(offset, offset + limit).map(map));
         });
     });
@@ -255,7 +258,7 @@ describe('filtered sort suite', function suite() {
       return redis.fsort(idSetKey, metaKeyPattern, field, 'DESC', '{}', Date.now(), offset, limit)
         .tap(sortedBy(comparatorAge(-1), prepopulateDataLength, field))
         .then(ids => {
-          expect(ids).to.have.length.of(20);
+          expect(ids).to.have.lengthOf(20);
           expect(ids.map(map)).to.be.deep.eq(externallySortedIdsDESC.slice(offset, offset + limit).map(map));
         });
     });
@@ -295,7 +298,7 @@ describe('filtered sort suite', function suite() {
       return redis.fsort(idSetKey, metaKeyPattern, field, 'ASC', '{}', Date.now(), offset, limit)
         .tap(sortedBy(comparatorAlphanum(1), prepopulateDataLength, field))
         .then(ids => {
-          expect(ids).to.have.length.of(20);
+          expect(ids).to.have.lengthOf(20);
           expect(ids.map(map)).to.be.deep.eq(externallySortedIdsASC.slice(offset, offset + limit).map(map));
         });
     });
@@ -304,7 +307,7 @@ describe('filtered sort suite', function suite() {
       return redis.fsort(idSetKey, metaKeyPattern, field, 'DESC', '{}', Date.now(), offset, limit)
         .tap(sortedBy(comparatorAlphanum(-1), prepopulateDataLength, field))
         .then(ids => {
-          expect(ids).to.have.length.of(20);
+          expect(ids).to.have.lengthOf(20);
           expect(ids.map(map)).to.be.deep.eq(externallySortedIdsDESC.slice(offset, offset + limit).map(map));
         });
     });
@@ -344,7 +347,7 @@ describe('filtered sort suite', function suite() {
       return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, Date.now(), offset, limit)
         .tap(sortedBy(comparatorASC, filteredLength))
         .then(ids => {
-          expect(ids).to.have.length.of(limit);
+          expect(ids).to.have.lengthOf(limit);
           expect(ids).to.be.deep.eq(filteredIds.slice(offset, offset + limit));
         });
     });
@@ -353,7 +356,7 @@ describe('filtered sort suite', function suite() {
       return redis.fsort(idSetKey, metaKeyPattern, null, 'DESC', filter, Date.now(), offset, limit)
         .tap(sortedBy(comparatorDESC, filteredLength))
         .then(ids => {
-          expect(ids).to.have.length.of(limit);
+          expect(ids).to.have.lengthOf(limit);
           expect(ids).to.be.deep.eq(invertedFilteredIds.slice(offset, offset + limit));
         });
     });
@@ -393,7 +396,7 @@ describe('filtered sort suite', function suite() {
       return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, Date.now(), offset, limit)
         .tap(sortedBy(comparatorASC, filteredLength))
         .then(ids => {
-          expect(ids).to.have.length.of(limit);
+          expect(ids).to.have.lengthOf(limit);
           expect(ids).to.be.deep.eq(filteredIds.slice(offset, offset + limit));
         });
     });
@@ -402,7 +405,7 @@ describe('filtered sort suite', function suite() {
       return redis.fsort(idSetKey, metaKeyPattern, null, 'DESC', filter, Date.now(), offset, limit)
         .tap(sortedBy(comparatorDESC, filteredLength))
         .then(ids => {
-          expect(ids).to.have.length.of(limit);
+          expect(ids).to.have.lengthOf(limit);
           expect(ids).to.be.deep.eq(invertedFilteredIds.slice(offset, offset + limit));
         });
     });
@@ -449,7 +452,7 @@ describe('filtered sort suite', function suite() {
       return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, Date.now(), offset, limit)
         .tap(sortedBy(comparatorASC, filteredLength))
         .then(ids => {
-          expect(ids).to.have.length.of(limit);
+          expect(ids).to.have.lengthOf(limit);
           expect(ids).to.be.deep.eq(filteredIds.slice(offset, offset + limit));
         });
     });
@@ -458,7 +461,7 @@ describe('filtered sort suite', function suite() {
       return redis.fsort(idSetKey, metaKeyPattern, null, 'DESC', filter, Date.now(), offset, limit)
         .tap(sortedBy(comparatorDESC, filteredLength))
         .then(ids => {
-          expect(ids).to.have.length.of(limit);
+          expect(ids).to.have.lengthOf(limit);
           expect(ids).to.be.deep.eq(invertedFilteredIds.slice(offset, offset + limit));
         });
     });
@@ -494,7 +497,7 @@ describe('filtered sort suite', function suite() {
       return redis.fsort(idSetKey, null, null, 'ASC', filter, Date.now(), offset, limit)
         .tap(sortedBy(comparatorASC, filteredLength))
         .then(ids => {
-          expect(ids).to.have.length.of(20);
+          expect(ids).to.have.lengthOf(20);
           expect(ids).to.be.deep.eq(filteredIds.slice(offset, offset + limit));
         });
     });
@@ -503,7 +506,7 @@ describe('filtered sort suite', function suite() {
       return redis.fsort(idSetKey, null, null, 'DESC', filter, Date.now(), offset, limit)
         .tap(sortedBy(comparatorDESC, filteredLength))
         .then(ids => {
-          expect(ids).to.have.length.of(20);
+          expect(ids).to.have.lengthOf(20);
           expect(ids).to.be.deep.eq(invertedFilteredIds.slice(offset, offset + limit));
         });
     });
