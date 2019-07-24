@@ -9,8 +9,8 @@ hashed keys, which resolve to the same slot
 
 ## Dependencies 
 Redis must have `FilterSortModule` enabled.
-Please see [HOWTO](./doc/build.md)
-API provided [API](./doc/api.md)
+Please see [HOWTO](./doc/build.md) build module.
+API provided by module in [API](./doc/api.md).
 
 ## Installation
 
