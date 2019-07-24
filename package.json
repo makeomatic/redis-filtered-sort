@@ -17,8 +17,8 @@
     "url": "git+https://github.com/makeomatic/redis-filtered-sort.git"
   },
   "keywords": [
-    "lua",
     "redis",
+    "redis-mod",
     "sort",
     "filter",
     "multi-sort"

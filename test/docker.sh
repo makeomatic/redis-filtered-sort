@@ -15,5 +15,7 @@ if [ x"$CI" = x"true" ]; then
   trap "$COMPOSE stop; $COMPOSE rm -f -v" EXIT
 fi
 
+make -C csrc/ docker-build
+
 $COMPOSE up -d
 $COMPOSE exec tester ./node_modules/.bin/mocha

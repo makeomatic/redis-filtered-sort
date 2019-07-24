@@ -1,0 +1,7 @@
+*.o
+*.a
+*.so
+*.db
+.vscode
+lib/rmutil/test_vector
+

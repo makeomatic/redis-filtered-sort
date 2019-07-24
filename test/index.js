@@ -72,6 +72,7 @@ describe('filtered sort suite', function suite() {
       if (field) {
         // because lua is -1/+1 and js is -1/0/+1 ids can be sorted differently
         // therefore we compare sort by derivative
+        // leaving this as default 
         const map = id => metadata[id][field];
         expect(copy.map(map)).to.be.deep.eq(ids.map(map));
       } else {
@@ -85,7 +86,7 @@ describe('filtered sort suite', function suite() {
   });
 
   before('populate data', function pretest() {
-    this.timeout(5000);
+    this.timeout(20000);
     const promises = ld.times(prepopulateDataLength, generateUser);
 
     // alphanum sort, use locale based sorting
@@ -166,7 +167,7 @@ describe('filtered sort suite', function suite() {
 
       return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, Date.now())
         .then(() => redis.zrangebyscore(`${idSetKey}::${mod.FSORT_TEMP_KEYSET}`, '-inf', '+inf'))
-        .tap(keys => expect(keys.length).to.be.eq(2))
+        .tap((keys) => expect(keys.length).to.be.eq(2))
         .tap(() => redis.fsortBust(idSetKey, Date.now()))
         .then(keys => Promise.join(
            redis.zcard(`${idSetKey}::${mod.FSORT_TEMP_KEYSET}`),
@@ -183,7 +184,7 @@ describe('filtered sort suite', function suite() {
     const offset = 10;
     const limit = 20;
 
-    it('sorts: asc', function test() {
+    it('C sorts: asc', function test() {
       return redis.fsort(idSetKey, null, null, 'ASC', '{}', Date.now())
         .tap(sortedBy(comparatorASC, prepopulateDataLength));
     });
@@ -211,7 +212,7 @@ describe('filtered sort suite', function suite() {
         });
     });
   });
-
+  
   describe('sort/pagination only, external numeric field', function sortSuite() {
     const offset = 10;
     const limit = 20;
@@ -307,6 +308,53 @@ describe('filtered sort suite', function suite() {
           expect(ids).to.have.length.of(20);
           expect(ids.map(map)).to.be.deep.eq(externallySortedIdsDESC.slice(offset, offset + limit).map(map));
         });
+    });
+  });
+
+  describe('filter/unknown command', function sortFilterExistsEmptySuite() {
+    const fieldName = 'fieldExists';
+    
+    const filter = mod.filter({
+      [fieldName]: { exxists: '1' }
+    });
+
+    const filterSubCmd = mod.filter({
+      [fieldName]: { any: [
+        { gte: 10, ltle: 18 },
+        { gte: 35, lte: 45 },
+      ]}
+    })
+
+    it('direct func', function test() {
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, Date.now())
+      .catch((exc)=> { 
+        expect(exc.message).to.equal("unknown func: exxists")
+      })
+      .then(() => {})
+    });
+
+    it('sub func', function test() {
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filterSubCmd, Date.now())
+      .catch((exc)=> { 
+        expect(exc.message).to.equal("unknown func: ltle")
+      })
+      .then(() => {})
+    });
+
+  });
+
+  describe('filter/incorrect any', function sortFilterExistsEmptySuite() {
+    const fieldName = 'fieldExists';
+
+    const filter = mod.filter({
+      [fieldName]: { any: ['1',2,3] }
+    });
+
+    it('direct func', function test() {
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, Date.now())
+      .then((res) => {
+        expect(res[0]).to.equal(0);
+      })
     });
   });
 
@@ -407,6 +455,63 @@ describe('filtered sort suite', function suite() {
         });
     });
   });
+  
+  describe('filter/any sub', function sortFilterExistsEmptySuite() {
+    const fieldName = 'age';
+    const hasOwnProperty = Object.prototype.hasOwnProperty;
+    const jsFilter = id => {
+      const userAge = metadata[id][fieldName];
+      return (
+        (
+          (userAge >= 10 && userAge <= 18) || (
+            (userAge >=60 && userAge <=65) || (userAge >=20 && userAge <=25)
+          )
+        ) || (userAge >= 35 && userAge <= 45));
+    };
+    const offset = 0;
+    const limit = 10;
+    const filter = mod.filter({
+      [fieldName]: { any: [
+        { any: [
+          { gte: 10, lte: 18 },
+          {any: [
+            { gte: 20, lte: 25 },
+            { gte: 60, lte: 65 } 
+          ]}
+        ]},
+        { gte: 35, lte: 45 },
+      ]}
+    });
+
+    let filteredIds;
+    let invertedFilteredIds;
+    let filteredLength;
+
+    before(function pretest() {
+      filteredIds = insertedIds.filter(jsFilter);
+      invertedFilteredIds = invertedIds.filter(jsFilter);
+      filteredLength = filteredIds.length;
+    });
+
+    it('sorts: asc', function test() {
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, Date.now())
+        .tap(sortedBy(comparatorASC, filteredLength));
+    });
+
+    it('sorts: desc', function test() {
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'DESC', filter, Date.now())
+        .tap(sortedBy(comparatorDESC, filteredLength));
+    });
+
+    it('pagination: asc', function test() {
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, Date.now(), offset, limit)
+        .tap(sortedBy(comparatorASC, filteredLength))
+        .then(ids => {
+          expect(ids).to.have.length.of(limit);
+          expect(ids).to.be.deep.eq(filteredIds.slice(offset, offset + limit));
+        });
+    });
+  });
 
   describe('filter/any', function sortFilterExistsEmptySuite() {
     const fieldName = 'age';
@@ -464,6 +569,60 @@ describe('filtered sort suite', function suite() {
     });
   });
 
+  describe('filter/some', function sortFilterExistsEmptySuite() {
+    const fieldName = 'age';
+    const ages = ld.range(20, 44);
+
+    const jsFilter = a => {
+      const meta = metadata[a];
+      return ld.indexOf(ages, meta.age) > -1;
+    };
+    const offset = 0;
+    const limit = 10;
+    const filter = mod.filter({
+      [fieldName]: { some : ages}
+    });
+
+    let filteredIds;
+    let invertedFilteredIds;
+    let filteredLength;
+
+    before(function pretest() {
+      filteredIds = insertedIds.filter(jsFilter);
+      invertedFilteredIds = invertedIds.filter(jsFilter);
+      filteredLength = filteredIds.length;
+    });
+
+    it('sorts: asc', function test() {
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, Date.now())
+        .tap(sortedBy(comparatorASC, filteredLength));
+    });
+
+    it('sorts: desc', function test() {
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'DESC', filter, Date.now())
+        .tap(sortedBy(comparatorDESC, filteredLength));
+    });
+
+    it('pagination: asc', function test() {
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, Date.now(), offset, limit)
+        .tap(sortedBy(comparatorASC, filteredLength))
+        .then(ids => {
+          expect(ids).to.have.length.of(limit);
+          expect(ids).to.be.deep.eq(filteredIds.slice(offset, offset + limit));
+        });
+    });
+
+    it('pagination: desc', function test() {
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'DESC', filter, Date.now(), offset, limit)
+        .tap(sortedBy(comparatorDESC, filteredLength))
+        .then(ids => {
+          expect(ids).to.have.length.of(limit);
+          expect(ids).to.be.deep.eq(invertedFilteredIds.slice(offset, offset + limit));
+        });
+    });
+  });
+
+
   describe('sort/id filter only', function sortFilterIdSuite() {
     const filterIdString = 'd-9';
     const jsFilter = a => a.indexOf(filterIdString) >= 0;
@@ -517,8 +676,8 @@ describe('filtered sort suite', function suite() {
     const color = 'ue';
     const jsFilter = a => {
       const meta = metadata[a];
-      return a.indexOf(filterIdString) >= 0 &&
-        meta.name.toLowerCase().indexOf(name) >= 0 &&
+      return meta.name.toLowerCase().indexOf(name) >= 0 
+        && a.indexOf(filterIdString) >= 0 &&
         meta.age >= age &&
         meta.age <= age * 3 &&
         ld.some(ld.values(ld.pick(meta, fields)), it => it.indexOf(color) >= 0)
@@ -543,8 +702,7 @@ describe('filtered sort suite', function suite() {
     });
 
     it('sorts: asc', function test() {
-      return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, Date.now())
-        .tap(sortedBy(comparatorASC, filteredLength));
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, Date.now()).tap(sortedBy(comparatorASC, filteredLength));
     });
 
     it('sorts: desc', function test() {

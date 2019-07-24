@@ -1,12 +1,4 @@
-const fs = require('fs');
-const path = require('path');
-
-const camelCase = require('lodash/camelCase');
-const snakeCase = require('lodash/snakeCase');
-
-const lua = fs.readFileSync(path.join(__dirname, 'sorted-filtered-list.lua'));
-const fsortBust = fs.readFileSync(path.join(__dirname, 'filtered-list-bust.lua'));
-const aggregateScript = fs.readFileSync(path.join(__dirname, 'groupped-list.lua'));
+const {Pipeline} = require('ioredis');
 
 // cached vars
 const regexp = /[\^\$\(\)\%\.\[\]\*\+\-\?]/g;
@@ -14,35 +6,94 @@ const keys = Object.keys;
 const stringify = JSON.stringify;
 const BLACK_LIST_PROPS = ['eq', 'ne'];
 
+// compat fix, cmod's variable hardcoded
 exports.FSORT_TEMP_KEYSET = 'fsort_temp_keys';
 
-const luaWrapper = (script) => `
----
-
-local function getIndexTempKeys(index)
-  return index .. "::${exports.FSORT_TEMP_KEYSET}";
-end
-
----
-
-${script.toString('utf-8')}
-`;
+/**
+ * Creates new ioredis command
+ * @param  {ioredis} redis
+ * @param  {string} Command name
+ * @returns {function} New ioredis nonbuffer command
+ */
+function createModuleCommand(redis, name) {
+  let funcs = redis.createBuiltinCommand(name);
+  redis[name] = funcs.string;
+  redis[name + "Buffer"] = funcs.buffer;
+}
 
 /**
- * Attached .sortedFilteredList function to ioredis instance
- * @param  {ioredis} redis
+ * Sets argument transformer for redis command
+ * @param {ioredis} redis 
+ * @param {string} name 
+ * @param {int} keyCount 
  */
-const fsortScript = luaWrapper(lua);
-const fsortBustScript = luaWrapper(fsortBust);
+function cmodAttachArgTransformer(redis, name, keyCount) {
+  let remapFunc = redis[name];
+  remapFunc = remapFunc.bind(redis);
+  
+  redis[name] = function (...args) {
+    var keyPrefix = redis.options.keyPrefix;
+    if (keyPrefix) {
+      for (let i = 0; i < keyCount; i++) {
+        if (args[i] !== null) {
+          args[i] = keyPrefix + args[i];
+        }
+      }
+    }
+    return remapFunc(...args);
+  }
+}
+
+/**
+ * C-Module exported functions
+ * We have to rebind them manually. IOredis hardcoded on `redis-commands` package.
+ * Think it's incorrect to change ioredis deps.
+ */
+const cmodFunctions = {
+  fsort: 2,
+  fsortBust: 1,
+  fsortAggregate: 2 
+}
+
+function cmodWrapCommands(obj) {
+  Object.keys(cmodFunctions).forEach((fName) => {
+    createModuleCommand(obj, fName);
+    cmodAttachArgTransformer(obj, fName, cmodFunctions[fName]);
+  })
+}
+
+function cmodWrapPipeline(redis) {
+  const rc = redis.constructor;
+  const pipeFunc = rc.prototype.pipeline.bind(redis);
+  rc.prototype.pipeline = function () {
+    let newPipe = pipeFunc(...arguments);
+    cmodWrapCommands(newPipe);
+    return newPipe;
+  };
+}
+
+/**
+ * Currently unsuported. Causes module failure
+ * @param {ioredis} redis 
+ */
+function cmodWrapMulti(redis) {
+  const rc = redis.constructor;
+  const multiFunc = rc.prototype.multi.bind(redis);
+  rc.prototype.multi = function () {
+    let newMulti = multiFunc(...arguments);
+    cmodWrapCommands(newMulti);
+    return newMulti;
+  };
+}
+
 
 exports.attach = function attachToRedis(redis, _name, useSnakeCase = false) {
-  const name = _name || 'sortedFilteredList';
-  const bustName = (useSnakeCase ? snakeCase : camelCase)(`${name}Bust`);
-  const aggregateName = (useSnakeCase ? snakeCase : camelCase)(`${name}Aggregate`);
-
-  redis.defineCommand(name, { numberOfKeys: 2, lua: fsortScript });
-  redis.defineCommand(bustName, { numberOfKeys: 1, lua: fsortBustScript });
-  redis.defineCommand(aggregateName, { numberOfKeys: 2, lua: aggregateScript });
+  //Let this vars be here, for compatibility with previous versions
+  let _useSnakeCase = useSnakeCase;
+  let __name = _name;
+  cmodWrapCommands(redis);
+  cmodWrapPipeline(redis);
+  //cmodWrapMulti(redis);
 };
 
 /**
@@ -94,8 +145,3 @@ exports.filter = function filter(obj) {
   return stringify(iterateOverObject(obj));
 };
 
-/**
- * Exports raw script
- * @type {Buffer}
- */
-exports.script = lua;
