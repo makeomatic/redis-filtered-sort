@@ -2,10 +2,15 @@
 
 [![Build Status](https://travis-ci.org/makeomatic/redis-filtered-sort.svg)](https://travis-ci.org/makeomatic/redis-filtered-sort)
 
-Exports LUA script, which is able to perform multi filter operations, as well as sorts
+Wraps Redis `FilterSortModule` api, which is able to perform multi filter operations, as well as sorts
 
 This basically replicates `http://redis.io/commands/sort` but with extra features and ability to run it in clustered mode with
 hashed keys, which resolve to the same slot
+
+## Dependencies 
+Redis must have `FilterSortModule` enabled.
+Please see [HOWTO](./doc/build.md) build module.
+API provided by module in [API](./doc/api.md).
 
 ## Installation
 

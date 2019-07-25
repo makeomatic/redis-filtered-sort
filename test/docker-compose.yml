@@ -1,5 +1,5 @@
 redis:
-  image: redis:3.2.7-alpine
+  image: makeomatic/redis_filter_mod
   container_name: redis
   hostname: redis
   expose:
