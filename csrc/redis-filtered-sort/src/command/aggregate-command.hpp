@@ -5,22 +5,24 @@
 #include <boost/property_tree/json_parser.hpp>
 
 #include "cmd-args.hpp"
-#include "util/redis_commands.hpp"
+#include "util/redis-wrapper.hpp"
 
-namespace ms {
-    using namespace std;
+namespace ms
+{
+using namespace std;
 
-    class AggregateCommand {
-    private:
-        AggregateArgs args;
-        boost::property_tree::ptree jsonFilters;
+class AggregateCommand
+{
+private:
+    AggregateArgs args;
+    boost::property_tree::ptree jsonFilters;
 
-    public:
-        AggregateCommand(AggregateArgs);
-        ~AggregateCommand();
-        void init();
-        int execute(RedisCommander);
-    };
-}
+public:
+    AggregateCommand(AggregateArgs);
+    ~AggregateCommand();
+    void init();
+    int execute(redis::Context);
+};
+} // namespace ms
 
 #endif

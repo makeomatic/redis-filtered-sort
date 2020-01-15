@@ -3,16 +3,31 @@
 #include <map>
 #include "boost/algorithm/string/replace.hpp"
 #include <iostream>
+
+#include "filter/scalar_filter.hpp"
+
 using namespace ms;
+
+Data::Data(redis::Context redis, string metaTemplate)
+{
+  this->redis = redis;
+  this->dataKeyTemplate = metaTemplate;
+}
+
+Data::~Data()
+{
+}
 
 void Data::loadSet(string set)
 {
-  this->data = this->redis.loadSet(set);
+  auto cmd = this->redis.getCommand();
+  this->data = cmd.smembers(set);
 }
 
 void Data::loadList(string list)
 {
-  this->data = this->redis.loadList(list);
+  auto cmd = this->redis.getCommand();
+  this->data = cmd.lrange(list, 0, -1);
 }
 
 void Data::use(vector<string> data)
@@ -20,16 +35,18 @@ void Data::use(vector<string> data)
   this->data = data;
 }
 
-void Data::save(string list)
+void Data::save(string key)
 {
-  std::cerr << "Save list " << list << "\n";
-  this->redis.saveList(list, this->data);
+  std::cerr << "Save list " << key << "\n";
+  auto data = this->redis.getData();
+  data.saveList(key, this->data);
 }
 
-void Data::save(string list, vector<string> data)
+void Data::save(string key, vector<string> list)
 {
-  std::cerr << "Save custom list " << list << "\n";
-  this->redis.saveList(list, data);
+  std::cerr << "Save custom list " << key << "\n";
+  auto data = this->redis.getData();
+  data.saveList(key, list);
 }
 
 size_t Data::size()
@@ -53,10 +70,10 @@ vector<pair<string, map<string, string>>> Data::loadMetadata(vector<string> fiel
     string metaKey = boost::algorithm::replace_all_copy(this->dataKeyTemplate, "*", dataValue);
 
     map<string, string> fieldValues;
-
+    auto command = this->redis.getCommand();
     for_each(fields.cbegin(), fields.cend(),
-             [this, &metaKey, &fieldValues](string field) {
-               string fieldValue = this->redis.getHashField(metaKey, field);
+             [&command, &metaKey, &fieldValues](string field) {
+               string fieldValue = command.hget(metaKey, field);
                fieldValues.insert({field, fieldValue});
              });
 
@@ -125,13 +142,13 @@ vector<string> Data::sortMeta(string field, string order)
   return result;
 };
 
-vector<string> Data::filterMeta(Filter filter)
+vector<string> Data::filterMeta(GenericFilter filter)
 {
   vector<string> result;
-  auto metaData = this->loadMetadata(filter.fieldsUsed);
+  auto metaData = this->loadMetadata(filter.getUsedFields());
   std::for_each(metaData.begin(), metaData.end(),
                 [&filter, &result](const pair<string, map<string, string>> &entry) {
-                  if (filter.checkRecord(entry))
+                  if (filter.match(entry.first, entry.second))
                   {
                     result.push_back(entry.first);
                   }
@@ -143,10 +160,10 @@ vector<string> Data::filterMeta(Filter filter)
 vector<string> Data::filter(string pattern)
 {
   vector<string> result;
+  ScalarFilter filter = ScalarFilter("match", ID_FIELD_NAME, pattern);
   std::for_each(this->data.begin(), this->data.end(),
-                [&pattern, &result](const string &entry) {
-                  auto matchResult = FilterFn::match_string(entry, pattern);
-                  if (matchResult)
+                [&filter, &result](const string &entry) {
+                  if (filter.match(entry))
                   {
                     result.push_back(entry);
                   }

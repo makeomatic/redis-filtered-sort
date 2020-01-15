@@ -2,6 +2,7 @@
 
 #include <string>
 #include <map>
+#include <iostream>
 #include <boost/format.hpp>
 #include <boost/algorithm/string/join.hpp>
 #include <boost/algorithm/string/replace.hpp>
@@ -11,6 +12,7 @@
 using namespace ms;
 using namespace std;
 using namespace boost::algorithm;
+namespace pt = boost::property_tree;
 
 AggregateCommand::AggregateCommand(AggregateArgs args)
 {
@@ -41,7 +43,7 @@ void AggregateCommand::init()
     }
 }
 
-int AggregateCommand::execute(RedisCommander redis)
+int AggregateCommand::execute(redis::Context redis)
 {
     auto presortedData = Data(redis, args.metaKey);
     presortedData.loadList(args.pssKey);
