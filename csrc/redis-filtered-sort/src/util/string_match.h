@@ -1,11 +1,10 @@
 #ifndef __STRINGMATCH_H
 #define __STRINGMATCH_H
-#include "general.h"
 //emulates lua pattern search
-// #include <stdio.h>
-// #include <stdlib.h>
-// #include <string.h>
-// #include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
 #include <stdarg.h>
 // #include <sys/types.h>
 

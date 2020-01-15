@@ -7,7 +7,7 @@ static FSortWork_t *tpool_work_create(thread_func_t func, void *arg) {
   if (func == NULL)
     return NULL;
 
-  work       = malloc(sizeof(FSortWork_t));
+  work       = (FSortWork_t*)malloc(sizeof(FSortWork_t));
   work->func = func;
   work->argv  = arg;
   work->next = NULL;
@@ -41,7 +41,7 @@ static FSortWork_t *tpool_work_get(FSortPool_t *tp) {
 }
 
 static void *tpool_worker(void *arg) {
-  FSortPool_t *tp = arg;
+  FSortPool_t *tp = (FSortPool_t*)arg;
   FSortWork_t *work;
 
   while (1) {
@@ -88,7 +88,7 @@ FSortPool_t *tpool_create(size_t num) {
   if (num == 0)
     num = 2;
 
-  tp = malloc(sizeof(FSortPool_t));
+  tp = (FSortPool_t*)malloc(sizeof(FSortPool_t));
   tp->thread_cnt = num;
   tp->stop = false;
   tp->cb = NULL;

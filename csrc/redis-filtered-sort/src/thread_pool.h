@@ -1,7 +1,7 @@
 #ifndef __THREAD_POOL_H
 #define __THREAD_POOL_H
 
-#include "general.h"
+#include <stdlib.h>
 #include <pthread.h>
 #include <stdbool.h>
 
