@@ -2,7 +2,7 @@
 #define __BUST_COMMAND_H
 
 #include "cmd-args.hpp"
-#include "util/redis-wrapper.hpp"
+#include "redis/context.hpp"
 
 namespace ms
 {

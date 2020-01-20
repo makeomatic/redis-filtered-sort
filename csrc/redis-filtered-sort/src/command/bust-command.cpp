@@ -39,9 +39,10 @@ int BustCommand::execute(redis::Context redis)
   for (auto &key : expiredKeys)
   {
     cmd.del(key);
+    cmd.zrem(tempKeysSet, key);
   }
   // ????
-  // cmd.del(tempKeysSet);
+
   redis.respondLong(expiredKeys.size());
   return 1;
 }

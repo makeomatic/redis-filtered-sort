@@ -4,13 +4,13 @@
 #include "boost/algorithm/string/replace.hpp"
 #include <iostream>
 
+#include "filter/filter.hpp"
 #include "filter/scalar_filter.hpp"
 
 using namespace ms;
 
-Data::Data(redis::Context redis, string metaTemplate)
+Data::Data(redis::Context &redis, string metaTemplate) : redis(redis)
 {
-  this->redis = redis;
   this->dataKeyTemplate = metaTemplate;
 }
 

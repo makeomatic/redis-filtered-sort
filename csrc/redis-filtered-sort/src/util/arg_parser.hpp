@@ -2,10 +2,7 @@
 #define __ARG_PARSER_H
 
 #include "../command/cmd-args.hpp"
-extern "C"
-{
-#include "redis/redismodule-defs.h"
-}
+#include "redis/redismodule.h"
 
 namespace ms
 {

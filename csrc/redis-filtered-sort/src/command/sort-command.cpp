@@ -5,9 +5,9 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/algorithm/string/replace.hpp>
 
-#include "../util/data.hpp"
-#include "../util/filter/filter.hpp"
-#include "../util/filter/parser.hpp"
+#include "util/data.hpp"
+#include "util/filter/filter.hpp"
+#include "util/filter/parser.hpp"
 
 #include <iostream>
 
@@ -81,7 +81,7 @@ void SortCommand::init()
   std::cerr << "fflkey " << this->fflKey << "\n";
 }
 
-int SortCommand::execute(redis::Context redis)
+int SortCommand::execute(redis::Context &redis)
 {
   auto redisCommand = redis.getCommand();
   int pssKType = redisCommand.type(this->pssKey);

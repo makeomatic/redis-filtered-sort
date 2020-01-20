@@ -1,26 +1,25 @@
 #include <thread>
-#include "redis/redismodule-defs.h"
-
-#include "redis/redismodule-defs.h"
+#include "redis/redismodule.h"
 #include "command/aggregate-command.hpp"
 #include "command/bust-command.hpp"
 #include "command/sort-command.hpp"
 
 #include "util/arg_parser.hpp"
+#include "./redis/util.hpp"
 
 int FSortBust_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
   ms::redis::GlobalUtil::AutoMemory(ctx);
 
-  // int ctxFlags = ms::redis::GlobalUtil::GetContextFlags(ctx);
-  // int isLua = ctxFlags & REDISMODULE_CTX_FLAGS_LUA;
-  // int isMulti = ctxFlags & REDISMODULE_CTX_FLAGS_MULTI;
+  int ctxFlags = ms::redis::GlobalUtil::GetContextFlags(ctx);
+  int isLua = ctxFlags & REDISMODULE_CTX_FLAGS_LUA;
+  int isMulti = ctxFlags & REDISMODULE_CTX_FLAGS_MULTI;
 
-  // if (isLua || isMulti)
-  // {
-  //   RedisModule_ReplyWithError(ctx, "Can't work in MULTI mode or LUA script!");
-  //   return REDISMODULE_OK;
-  // }
+  if (isLua || isMulti)
+  {
+    RedisModule_ReplyWithError(ctx, "Can't work in MULTI mode or LUA script!");
+    return REDISMODULE_OK;
+  }
 
   if (argc < 3 || argc > 4)
   {
@@ -46,15 +45,15 @@ int FSortAggregate_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, i
 {
   ms::redis::GlobalUtil::AutoMemory(ctx);
 
-  // int ctxFlags = ms::redis::GlobalUtil::GetContextFlags(ctx);
-  // int isLua = ctxFlags & REDISMODULE_CTX_FLAGS_LUA;
-  // int isMulti = ctxFlags & REDISMODULE_CTX_FLAGS_MULTI;
+  int ctxFlags = ms::redis::GlobalUtil::GetContextFlags(ctx);
+  int isLua = ctxFlags & REDISMODULE_CTX_FLAGS_LUA;
+  int isMulti = ctxFlags & REDISMODULE_CTX_FLAGS_MULTI;
 
-  // if (isLua || isMulti)
-  // {
-  //   RedisModule_ReplyWithError(ctx, "Can't work in MULTI mode or LUA script!");
-  //   return REDISMODULE_OK;
-  // }
+  if (isLua || isMulti)
+  {
+    RedisModule_ReplyWithError(ctx, "Can't work in MULTI mode or LUA script!");
+    return REDISMODULE_OK;
+  }
 
   if (argc != 4)
   {
@@ -81,15 +80,26 @@ int FSort_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
   ms::redis::GlobalUtil::AutoMemory(ctx);
 
-  // int ctxFlags = ms::redis::GlobalUtil::GetContextFlags(ctx);
-  // int isLua = ctxFlags & REDISMODULE_CTX_FLAGS_LUA;
-  // int isMulti = ctxFlags & REDISMODULE_CTX_FLAGS_MULTI;
+  if (RedisModule_IsBlockedTimeoutRequest(ctx)) {
+    RedisModule_ReplyWithError(ctx, "Timeout response");
+    return REDISMODULE_OK;
+  }
 
-  // if (isLua || isMulti)
-  // {
-  //   RedisModule_ReplyWithError(ctx, "Can't work in MULTI mode or LUA script!");
-  //   return REDISMODULE_OK;
-  // }
+  if (RedisModule_IsBlockedReplyRequest(ctx)) {
+    RedisModule_ReplyWithSimpleString(ctx, "Blocked response");
+    return REDISMODULE_OK;
+  }
+
+
+  int ctxFlags = ms::redis::GlobalUtil::GetContextFlags(ctx);
+  int isLua = ctxFlags & REDISMODULE_CTX_FLAGS_LUA;
+  int isMulti = ctxFlags & REDISMODULE_CTX_FLAGS_MULTI;
+
+  if (isLua || isMulti)
+  {
+    RedisModule_ReplyWithError(ctx, "Can't work in MULTI mode or LUA script!");
+    return REDISMODULE_OK;
+  }
 
   if (argc < 7)
   {

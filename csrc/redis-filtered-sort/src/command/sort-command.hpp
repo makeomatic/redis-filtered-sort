@@ -6,7 +6,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
-#include "util/redis-wrapper.hpp"
+#include "redis/context.hpp"
 #include "util/filter/filter.hpp"
 
 namespace ms
@@ -28,7 +28,7 @@ public:
   SortCommand(SortArgs);
   ~SortCommand();
   void init();
-  int execute(redis::Context);
+  int execute(redis::Context &);
 };
 } // namespace ms
 

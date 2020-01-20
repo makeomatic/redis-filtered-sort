@@ -3,6 +3,7 @@
 #include <iostream>
 #include <boost/format.hpp>
 
+#include "filter.hpp"
 #include "object_filter.hpp"
 #include "multi_filter.hpp"
 #include "scalar_filter.hpp"
@@ -37,7 +38,7 @@ SomeAnyFilter parseSomeNode(string field, JsonNode node)
   SomeAnyFilter filter = SomeAnyFilter(false);
   for (JsonNode::value_type &anySub : node)
   {
-    auto subFilter = ScalarFilter(field, "eq", anySub.second.data());
+    auto subFilter = ScalarFilter("eq", field, anySub.second.data());
     filter.addSubFilter(subFilter);
   }
   return filter;
@@ -84,8 +85,8 @@ GenericFilter parseJson(JsonNode node, string topLevelField = "")
 
     if (jsonKey.compare("#multi") == 0)
     {
-      string matchValue = node.get<string>("match");
-      auto jsonFields = node.get_child("fields");
+      string matchValue = jsonSub.get<string>("match");
+      auto jsonFields = jsonSub.get_child("fields");
       auto fields = getFields(jsonFields);
       filterToAdd = MultiFilter(fields, matchValue);
     }

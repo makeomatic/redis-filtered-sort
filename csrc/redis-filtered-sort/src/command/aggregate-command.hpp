@@ -5,7 +5,7 @@
 #include <boost/property_tree/json_parser.hpp>
 
 #include "cmd-args.hpp"
-#include "util/redis-wrapper.hpp"
+#include "redis/context.hpp"
 
 namespace ms
 {

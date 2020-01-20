@@ -2,6 +2,9 @@
 
 using namespace ms;
 
+GenericFilter::GenericFilter(){};
+GenericFilter::~GenericFilter(){};
+
 vector<GenericFilter> GenericFilter::getSubFilters()
 {
     return filters;
@@ -10,6 +13,11 @@ vector<GenericFilter> GenericFilter::getSubFilters()
 vector<string> GenericFilter::getUsedFields()
 {
     return fieldsUsed;
+}
+
+bool GenericFilter::match(string id, map<string, string> value)
+{
+    return false;
 }
 
 void GenericFilter::addUsedField(vector<string> fields)

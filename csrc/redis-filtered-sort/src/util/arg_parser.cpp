@@ -1,5 +1,6 @@
 #include "arg_parser.hpp"
-#include "util/redis-wrapper.hpp"
+#include "redis/redismodule.h"
+#include "redis/util.hpp"
 
 using namespace ms;
 using namespace redis;

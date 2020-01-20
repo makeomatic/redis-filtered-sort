@@ -1,15 +1,12 @@
-#ifndef __REDIS_COMMANDS_H
-#define __REDIS_COMMANDS_H
+#ifndef __REDIS_UTILS_H
+#define __REDIS_UTILS_H
 
 #include <string>
 #include <vector>
 
 #include <boost/format.hpp>
 
-extern "C"
-{
-#include "redis/redismodule-defs.h"
-};
+#include "./redismodule.h"
 
 namespace ms::redis
 {
@@ -37,61 +34,6 @@ public:
   static int WrongArity(RedisModuleCtx *ctx);
   static void AutoMemory(RedisModuleCtx *ctx);
   static int GetContextFlags(RedisModuleCtx *ctx);
-};
-
-class Data
-{
-private:
-  RedisModuleCtx *ctx;
-
-public:
-  Data(RedisModuleCtx *ctx);
-  void saveList(string key, vector<string> data);
-};
-
-class Command
-{
-private:
-  RedisModuleCtx *ctx;
-
-public:
-  Command(RedisModuleCtx *ctx);
-  int type(string keyName);
-  int pexpire(string key, long long ttl);
-  int zadd(string key, string value, long long score);
-  int del(string key);
-
-  string hget(string key, string field);
-
-  vector<string> zrangebyscore(string key, long long start, long long end);
-
-  long long llen(string key);
-  vector<string> lrange(string key, long long offset, long long limit);
-  vector<string> smembers(string key);
-};
-
-class Context
-{
-private:
-  RedisModuleCtx *ctx;
-
-public:
-  Context();
-  Context(RedisModuleCtx *ctx);
-  ~Context();
-
-  Command getCommand();
-  Data getData();
-
-  void respondLong(long long response);
-  void respondString(string response);
-  void respondError(string error);
-
-  void respondEmptyArray();
-  int respondList(string key, long long offset, long long limit);
-
-  void lockContext();
-  void unlockContext();
 };
 
 class Utils

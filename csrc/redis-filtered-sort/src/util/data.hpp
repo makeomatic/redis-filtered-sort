@@ -4,7 +4,7 @@
 #include <vector>
 #include <map>
 #include <string>
-#include "./redis-wrapper.hpp"
+#include "redis/context.hpp"
 
 #include "./filter/filter.hpp"
 
@@ -15,14 +15,14 @@ using namespace std;
 class Data
 {
 private:
-    redis::Context redis;
+    redis::Context &redis;
     vector<string> data;
     string dataKeyTemplate;
 
 public:
     string dataTemplate;
 
-    Data(redis::Context redis, string);
+    Data(redis::Context &redis, string);
     ~Data();
 
     void loadList(string);

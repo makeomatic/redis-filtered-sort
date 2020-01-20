@@ -8,7 +8,7 @@ ScalarFilter::ScalarFilter(string fn, string field, string pattern)
   if (this->matchFns.find(fn) == this->matchFns.end())
   {
     auto error = boost::format("Unknown function %s") % fn;
-    throw boost::str(error);
+    throw invalid_argument(boost::str(error));
   }
 
   this->fn = fn;
