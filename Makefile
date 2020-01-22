@@ -1,20 +1,16 @@
-SHELL := /bin/sh
-BABEL := ./node_modules/.bin/babel
-THIS_FILE := $(lastword $(MAKEFILE_LIST))
+DOCKER_IMAGE="makeomatic/redis_filter_mod"
 
-BUILD_DIR := ./lib
-SOURCES := index.js
+ifdef IMAGE_NAME
+	DOCKER_IMAGE = $(IMAGE_NAME)
+endif
 
-$(BUILD_DIR)/%.js: %.js
-		$(BABEL) $*.js -d $@
+all: build
 
-clean:
-	rm -rf $(BUILD_DIR)
+docker-push:
+	docker push $(DOCKER_IMAGE)
 
-build: $(foreach src, $(SOURCES), $(BUILD_DIR)/$(src))
-
-all: clean build
-
-redis-module:
-	make -C csrc/ build
+docker-build:
+	docker build . -f ./Dockerfile -t $(DOCKER_IMAGE)
+docker-rebuild: 
+	docker build . --no-cache -f ./Dockerfile -t $(DOCKER_IMAGE)
 
