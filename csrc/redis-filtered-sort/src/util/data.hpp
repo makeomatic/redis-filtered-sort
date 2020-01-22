@@ -36,7 +36,7 @@ public:
     vector<string> sort(string);
     vector<string> sortMeta(string, string);
     vector<string> filter(string);
-    vector<string> filterMeta(GenericFilter);
+    vector<string> filterMeta(FilterInterface*);
 };
 
 } // namespace ms

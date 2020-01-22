@@ -17,7 +17,7 @@ class FilterParser
 {
 public:
     FilterParser();
-    static GenericFilter ParseJsonTree(JsonNode node);
+    static FilterInterface *ParseJsonTree(JsonNode node);
 
 private:
     string fn;

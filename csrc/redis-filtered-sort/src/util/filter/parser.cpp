@@ -4,14 +4,16 @@
 #include <boost/format.hpp>
 
 #include "filter.hpp"
-#include "object_filter.hpp"
+
 #include "multi_filter.hpp"
 #include "scalar_filter.hpp"
 #include "some_any_filter.hpp"
 
+#include <boost/log/trivial.hpp>
+
 using namespace ms;
 
-GenericFilter parseJson(JsonNode node, string topLevelField);
+void parseJson(FilterInterface *filter, JsonNode node, string topLevelField);
 
 FilterParser::FilterParser()
 {
@@ -33,53 +35,55 @@ vector<string> getFields(JsonNode node)
   return fields;
 }
 
-SomeAnyFilter parseSomeNode(string field, JsonNode node)
+SomeAnyFilter *parseSomeNode(string field, JsonNode node)
 {
-  SomeAnyFilter filter = SomeAnyFilter(false);
+  SomeAnyFilter *filter = new SomeAnyFilter(false);
   for (JsonNode::value_type &anySub : node)
   {
-    auto subFilter = ScalarFilter("eq", field, anySub.second.data());
-    filter.addSubFilter(subFilter);
+    auto subFilter = new ScalarFilter("match", field, anySub.second.data());
+    filter->addSubFilter(subFilter);
   }
   return filter;
 }
 
-SomeAnyFilter parseAnyNode(string field, JsonNode node)
+SomeAnyFilter *parseAnyNode(string field, JsonNode node)
 {
-  SomeAnyFilter filter = SomeAnyFilter(true);
+  SomeAnyFilter *filter = new SomeAnyFilter(true);
   for (JsonNode::value_type &subNode : node)
   {
-    auto tmpFilter = parseJson(subNode.second, field);
-    filter.copyFilters(tmpFilter);
+    GenericFilter *tmpFilter = new GenericFilter();
+    parseJson(tmpFilter, subNode.second, field);
+    filter->addSubFilter(tmpFilter);
   }
   return filter;
 }
 
-ScalarFilter parseScalarNode(string field, JsonNode::value_type node)
+ScalarFilter *parseScalarNode(string field, JsonNode::value_type node)
 {
-  ScalarFilter filter = ScalarFilter(node.first.data(), field, node.second.data());
-  return filter;
+  return new ScalarFilter(node.first.data(), field, node.second.data());
 }
 
-GenericFilter parseObjectNode(JsonNode node, string key)
+FilterInterface *parseObjectNode(JsonNode node, string key, string topLevelField)
 {
   if (key.compare("any") == 0)
   {
-    return parseAnyNode(key, node);
+    return parseAnyNode(topLevelField, node);
   }
   if (key.compare("some") == 0)
   {
-    return parseSomeNode(key, node);
+    return parseSomeNode(topLevelField, node);
   }
-  return parseJson(node, key);
+
+  GenericFilter *filter = new GenericFilter();
+  parseJson(filter, node, key);
+  return filter;
 }
 
-GenericFilter parseJson(JsonNode node, string topLevelField = "")
+void parseJson(FilterInterface *filter, JsonNode node, string topLevelField = "")
 {
-  GenericFilter filter;
   for (JsonNode::value_type &child : node)
   {
-    GenericFilter filterToAdd;
+    FilterInterface *filterToAdd;
     string jsonKey = child.first.data();
     JsonNode jsonSub = child.second;
 
@@ -88,34 +92,35 @@ GenericFilter parseJson(JsonNode node, string topLevelField = "")
       string matchValue = jsonSub.get<string>("match");
       auto jsonFields = jsonSub.get_child("fields");
       auto fields = getFields(jsonFields);
-      filterToAdd = MultiFilter(fields, matchValue);
+      filterToAdd = new MultiFilter(fields, matchValue);
     }
     else
     {
       // it's an object
       if (jsonSub.data().empty())
       {
-        filterToAdd = parseObjectNode(jsonSub, jsonKey);
+        filterToAdd = parseObjectNode(jsonSub, jsonKey, topLevelField);
       }
       else
       {
         if (isFilterFunction(jsonKey))
         {
-          filterToAdd = ScalarFilter("match", jsonKey, jsonSub.data());
+          filterToAdd = new ScalarFilter("match", jsonKey, jsonSub.data());
         }
         else
         {
-          filterToAdd = ScalarFilter(jsonKey, topLevelField, child.second.data());
+          filterToAdd = new ScalarFilter(jsonKey, topLevelField, child.second.data());
         }
       }
     }
-    filter.addSubFilter(filterToAdd);
+    filter->addSubFilter(filterToAdd);
   }
 
-  return filter;
 }
 
-GenericFilter FilterParser::ParseJsonTree(JsonNode node)
+FilterInterface *FilterParser::ParseJsonTree(JsonNode node)
 {
-  return parseJson(node);
+  GenericFilter *filter = new GenericFilter();
+  parseJson(filter, node);
+  return filter;
 }

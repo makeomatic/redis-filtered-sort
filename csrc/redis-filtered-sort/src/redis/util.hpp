@@ -12,17 +12,6 @@ namespace ms::redis
 {
 using namespace std;
 
-class RedisCommander
-{
-private:
-  RedisModuleCtx *ctx;
-
-public:
-  RedisCommander(RedisModuleCtx *ctx);
-  ~RedisCommander();
-  int registerCaches(string key, string keySet, long long timeStamp, long long ttl);
-};
-
 class GlobalUtil
 {
 public:

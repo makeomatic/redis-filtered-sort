@@ -17,6 +17,7 @@ private:
 public:
   Data(RedisModuleCtx *ctx);
   void saveList(string key, vector<string> data);
+  int registerCaches(string key, string tempKeysSet, long long timeStamp, long long ttl);
 };
 
 }

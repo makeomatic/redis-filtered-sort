@@ -1,39 +1,68 @@
 #include "filter.hpp"
+#include <string>
+#include <vector>
+#include <boost/log/trivial.hpp>
 
 using namespace ms;
 
 GenericFilter::GenericFilter(){};
 GenericFilter::~GenericFilter(){};
 
-vector<GenericFilter> GenericFilter::getSubFilters()
+vector<FilterInterface*> GenericFilter::getSubFilters()
 {
-    return filters;
+  return filters;
 };
 
 vector<string> GenericFilter::getUsedFields()
 {
-    return fieldsUsed;
+  return fieldsUsed;
 }
 
-bool GenericFilter::match(string id, map<string, string> value)
+bool GenericFilter::match(string id, map<string, string> record)
 {
-    return false;
+  auto subFilters = this->getSubFilters();
+  BOOST_LOG_TRIVIAL(debug) << "Generic filter start =====================";
+  for (size_t j = 0; j < subFilters.size(); j++)
+  {
+    auto subFilter = subFilters[j];
+    if (!subFilter->match(id, record)) {
+      BOOST_LOG_TRIVIAL(debug) << "Generic filter mismatch =====================";
+      return false;
+    } 
+  }
+
+  BOOST_LOG_TRIVIAL(debug) << "Generic filter match =====================" ;
+  return true;
 }
 
 void GenericFilter::addUsedField(vector<string> fields)
 {
-    fieldsUsed.insert(fieldsUsed.end(), fields.cbegin(), fields.cend());
+  fieldsUsed.insert(fieldsUsed.end(), fields.cbegin(), fields.cend());
 }
 
-void GenericFilter::addSubFilter(GenericFilter filter)
+void GenericFilter::addSubFilter(FilterInterface *filter)
 {
-    filters.push_back(filter);
-    this->addUsedField(filter.getUsedFields());
+  filters.push_back(filter);
+  this->addUsedField(filter->getUsedFields());
 };
 
-void GenericFilter::copyFilters(GenericFilter filter)
+void GenericFilter::copyFilters(FilterInterface *filter)
 {
-    auto subFilters = filter.getSubFilters();
-    filters.insert(filters.end(), subFilters.cbegin(), subFilters.cbegin());
-    this->addUsedField(filter.getUsedFields());
+  auto subFilters = filter->getSubFilters();
+  filters.insert(filters.end(), subFilters.cbegin(), subFilters.cend());
+  this->addUsedField(filter->getUsedFields());
 };
+
+// string GenericFilter::to_string() {
+//   string strVal = "\n" + string(typeid(this).name()) + " with fields [";
+//   for (auto &field : fieldsUsed)
+//   {
+//     strVal += field + ", ";
+//   }
+//   strVal += "]\n\tSubFilters:\n";
+//   for (auto &filter: filters) {
+//     strVal += "\t\t" + filter.to_string();
+//   }
+//   strVal += "\n";
+//   return strVal;
+// }

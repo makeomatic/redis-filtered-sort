@@ -10,6 +10,7 @@
 #include "util/filter/parser.hpp"
 
 #include <iostream>
+#include <boost/log/trivial.hpp>
 
 using namespace ms;
 
@@ -31,14 +32,13 @@ void mlog(string message)
 
 void SortCommand::init()
 {
-  this->tempKeysSet = boost::str(boost::format("%s::fsort_temp_keys") % this->args.idSet);
+   this->tempKeysSet = boost::str(boost::format("%s::fsort_temp_keys") % this->args.idSet);
   try
   {
     stringstream jsonText;
     jsonText << args.filter;
     boost::property_tree::json_parser::read_json(jsonText, this->jsonFilters);
     this->filters = FilterParser::ParseJsonTree(this->jsonFilters);
-    //        this->filters.toString(0);
   }
   catch (exception &e)
   {
@@ -77,26 +77,30 @@ void SortCommand::init()
 
   this->fflKey = boost::join(ffKeyOpts, ":");
   this->pssKey = boost::join(psKeyOpts, ":");
-  std::cerr << "psskey " << this->pssKey << "\n";
-  std::cerr << "fflkey " << this->fflKey << "\n";
+  BOOST_LOG_TRIVIAL(debug) << "psskey " << this->pssKey;
+  BOOST_LOG_TRIVIAL(debug) << "fflkey " << this->fflKey;
 }
 
 int SortCommand::execute(redis::Context &redis)
 {
   auto redisCommand = redis.getCommand();
+  auto redisData = redis.getData();
+
   int pssKType = redisCommand.type(this->pssKey);
   int fflKType = redisCommand.type(this->fflKey);
   auto args = this->args;
 
+  BOOST_LOG_TRIVIAL(debug) << "Starting command";
+
   if (fflKType == REDISMODULE_KEYTYPE_LIST)
   {
-    mlog("respond FFL key " + this->fflKey + "\n");
+    BOOST_LOG_TRIVIAL(debug) << "respond FFL key " << this->fflKey;
 
     redisCommand.pexpire(this->tempKeysSet, args.expire);
-    // TODO FIXME
-    // redis.registerCaches(this->pssKey, this->tempKeysSet, args.curTime, args.expire);
-    // redis.registerCaches(this->fflKey, this->tempKeysSet, args.curTime, args.expire);
-    // redis.respondList(this->fflKey, args.offset, args.limit, args.keyOnly);
+
+    redisData.registerCaches(this->pssKey, this->tempKeysSet, args.curTime, args.expire);
+    redisData.registerCaches(this->fflKey, this->tempKeysSet, args.curTime, args.expire);
+    redis.respondList(this->fflKey, args.offset, args.limit);
     return 0;
   }
 
@@ -107,17 +111,17 @@ int SortCommand::execute(redis::Context &redis)
     //Respond pss
     if (this->fflKey.compare(this->pssKey) == 0)
     {
-      mlog("No filter request respond presorted set");
+      BOOST_LOG_TRIVIAL(debug) << "No filter request respond presorted set";
       redisCommand.pexpire(this->tempKeysSet, args.expire);
-      // TODO FIXME
-      // redis.registerCaches(this->pssKey, this->tempKeysSet, args.curTime, args.expire);
-      // return redis.respondList(this->pssKey, args.offset, args.limit, args.keyOnly);
+
+      redisData.registerCaches(this->pssKey, this->tempKeysSet, args.curTime, args.expire);
+      return redis.respondList(this->pssKey, args.offset, args.limit);
     }
     //Load pss cache if sort requested
     sortData.loadList(this->pssKey);
     if (sortData.size() == 0)
     {
-      mlog("No data in pss");
+      BOOST_LOG_TRIVIAL(warning) << "No data in pss";
       //exit
       return 0;
     }
@@ -125,6 +129,7 @@ int SortCommand::execute(redis::Context &redis)
   else
   {
     sortData.loadSet(args.idSet);
+    BOOST_LOG_TRIVIAL(debug) << "Loaded set " << args.idSet << " size " << sortData.size();
 
     if (sortData.size() > 0)
     {
@@ -150,7 +155,7 @@ int SortCommand::execute(redis::Context &redis)
 
       redisCommand.pexpire(this->tempKeysSet, args.expire);
       // TODO FIXME
-      // redis.registerCaches(this->pssKey, this->tempKeysSet, args.curTime, args.expire);
+      redisData.registerCaches(this->pssKey, this->tempKeysSet, args.curTime, args.expire);
     }
     else
     {
@@ -166,13 +171,11 @@ int SortCommand::execute(redis::Context &redis)
 
     if (this->fflKey.compare(this->pssKey) == 0)
     {
-      // TODO FIXME
-      // return redis.respondList(this->pssKey, args.offset, args.limit, args.keyOnly);
+      return redis.respondList(this->pssKey, args.offset, args.limit);
     }
 
     redisCommand.pexpire(this->tempKeysSet, args.expire);
-    // TODO FIXME
-    //redis.registerCaches(this->pssKey, this->tempKeysSet, args.curTime, args.expire);
+    redisData.registerCaches(this->pssKey, this->tempKeysSet, args.curTime, args.expire);
   }
 
   vector<string> filteredData;
@@ -184,7 +187,7 @@ int SortCommand::execute(redis::Context &redis)
   {
     filteredData = sortData.filterMeta(this->filters);
   }
-
+  BOOST_LOG_TRIVIAL(debug) << "Filtered records count " << filteredData.size();
   if (filteredData.size() > 0)
   {
     std::cerr << "Save filtered: " << filteredData.size() << "\n";
@@ -199,8 +202,8 @@ int SortCommand::execute(redis::Context &redis)
     }
     redisCommand.pexpire(this->tempKeysSet, args.expire);
     // TODO FIXME
-    // redis.registerCaches(this->fflKey, this->tempKeysSet, args.curTime, args.expire);
-    // return redis.respondList(this->fflKey, args.offset, args.limit, args.keyOnly);
+    redisData.registerCaches(this->fflKey, this->tempKeysSet, args.curTime, args.expire);
+    return redis.respondList(this->fflKey, args.offset, args.limit);
   }
 
   if (args.keyOnly == 1)

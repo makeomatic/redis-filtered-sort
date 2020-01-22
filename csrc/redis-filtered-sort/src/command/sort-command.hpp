@@ -21,7 +21,7 @@ private:
   string fflKey;
   string pssKey;
   boost::property_tree::ptree jsonFilters;
-  GenericFilter filters;
+  FilterInterface *filters;
   string idFilter;
 
 public:

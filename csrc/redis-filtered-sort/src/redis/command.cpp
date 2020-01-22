@@ -16,7 +16,7 @@ string Command::hget(string key, string field)
   RedisModuleString *metaKeyString = RedisModule_CreateString(ctx, key.c_str(), key.length());
   RedisModuleKey *metaKey = (RedisModuleKey *)RedisModule_OpenKey(ctx, metaKeyString, REDISMODULE_READ);
 
-  RedisModule_HashGet(metaKey, REDISMODULE_HASH_CFIELDS, field.c_str(), &value, NULL);
+  auto result = RedisModule_HashGet(metaKey, REDISMODULE_HASH_CFIELDS, field.c_str(), &value, NULL);
 
   size_t redisValueSize = 0;
   const char *redisValue = RedisModule_StringPtrLen(value, &redisValueSize);
@@ -73,7 +73,7 @@ vector<string> Command::zrangebyscore(string key, long long start, long long sto
 {
   RedisModuleCtx *ctx = this->ctx;
 
-  // RM_LOG_DEBUG(ctx, "Getting key %s", key.c_str());
+  RM_LOG_DEBUG(ctx, "zrangebyscore Getting key %s", key.c_str());
   RedisModuleCallReply *reply = RedisModule_Call(ctx, "ZRANGEBYSCORE", "cll", key.c_str(), start, stop);
 
   auto replyType = RedisModule_CallReplyType(reply);
@@ -88,7 +88,7 @@ vector<string> Command::lrange(string key, long long start, long long stop)
 {
   RedisModuleCtx *ctx = this->ctx;
 
-  // RM_LOG_DEBUG(ctx, "Getting key %s", key.c_str());
+  RM_LOG_DEBUG(ctx, "lrange Getting key %s", key.c_str());
   RedisModuleCallReply *reply = RedisModule_Call(this->ctx, "lrange", "cll", key.c_str(), start, stop);
 
   auto replyType = RedisModule_CallReplyType(reply);
@@ -103,8 +103,8 @@ vector<string> Command::smembers(string key)
 {
   RedisModuleCtx *ctx = this->ctx;
 
-  // RM_LOG_DEBUG(ctx, "Getting key %s", key.c_str());
-  RedisModuleCallReply *reply = RedisModule_Call(ctx, "SMEMBERS", "cll", key.c_str());
+  RM_LOG_DEBUG(ctx, "Getting key %s", key.c_str());
+  RedisModuleCallReply *reply = RedisModule_Call(ctx, "SMEMBERS", "c", key.c_str());
 
   auto replyType = RedisModule_CallReplyType(reply);
   if (replyType == REDISMODULE_REPLY_ARRAY)

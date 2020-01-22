@@ -7,6 +7,8 @@
 #include "filter/filter.hpp"
 #include "filter/scalar_filter.hpp"
 
+#include <boost/log/trivial.hpp>
+
 using namespace ms;
 
 Data::Data(redis::Context &redis, string metaTemplate) : redis(redis)
@@ -63,6 +65,10 @@ vector<pair<string, map<string, string>>> Data::loadMetadata(vector<string> fiel
 
   this->redis.lockContext();
 
+  for( auto &field: fields) {
+    BOOST_LOG_TRIVIAL(debug) << "Field to get: " << field;
+  }
+
   for (size_t i = 0; i < this->data.size(); i++)
   {
 
@@ -83,7 +89,7 @@ vector<pair<string, map<string, string>>> Data::loadMetadata(vector<string> fiel
     }
     else
     {
-      std::cerr << "Missing value" << metaKey << "\n";
+      // BOOST_LOG_TRIVIAL(error) << "Missing value for key in "<< metaKey;
     }
   }
 
@@ -142,13 +148,13 @@ vector<string> Data::sortMeta(string field, string order)
   return result;
 };
 
-vector<string> Data::filterMeta(GenericFilter filter)
+vector<string> Data::filterMeta(FilterInterface *filter)
 {
   vector<string> result;
-  auto metaData = this->loadMetadata(filter.getUsedFields());
+  auto metaData = this->loadMetadata(filter->getUsedFields());
   std::for_each(metaData.begin(), metaData.end(),
                 [&filter, &result](const pair<string, map<string, string>> &entry) {
-                  if (filter.match(entry.first, entry.second))
+                  if (filter->match(entry.first, entry.second))
                   {
                     result.push_back(entry.first);
                   }
