@@ -1,8 +1,5 @@
 #include "parser.hpp"
 
-#include <iostream>
-#include <boost/format.hpp>
-
 #include "filter.hpp"
 
 #include "multi_filter.hpp"
@@ -46,10 +43,6 @@ SomeAnyFilter *parseAnyNode(string field, JsonNode node) {
     filter->addSubFilter(tmpFilter);
   }
   return filter;
-}
-
-ScalarFilter *parseScalarNode(string field, JsonNode::value_type node) {
-  return new ScalarFilter(node.first.data(), field, node.second.data());
 }
 
 FilterInterface *parseObjectNode(JsonNode node, string key, string topLevelField) {

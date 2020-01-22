@@ -3,10 +3,8 @@
 #include "string"
 #include <boost/format.hpp>
 #include <boost/algorithm/string/join.hpp>
-#include <boost/algorithm/string/replace.hpp>
 
 #include "util/data.hpp"
-#include "util/filter/filter.hpp"
 #include "util/filter/parser.hpp"
 
 #include <iostream>
@@ -19,6 +17,7 @@ SortCommand::SortCommand(SortArgs args, redis::Context &redis) : redis(redis) {
 }
 
 SortCommand::~SortCommand() {
+  delete filters;
 }
 
 void SortCommand::init() {

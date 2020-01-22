@@ -9,8 +9,8 @@ SomeAnyFilter::SomeAnyFilter(bool isSome) {
 bool SomeAnyFilter::match(string id, map<string, string> record) {
   auto subFilters = this->getSubFilters();
 
-  for (size_t i = 0; i < subFilters.size(); i++) {
-    auto subFilter = subFilters[i];
+  for (size_t i = 0; i < subFilters->size(); i++) {
+    auto subFilter = subFilters->at(i);
     bool matchResult = subFilter->match(id, record);
 
     if (matchResult) {

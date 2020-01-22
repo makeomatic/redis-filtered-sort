@@ -12,7 +12,8 @@ ScalarFilter::ScalarFilter(string fn, string field, string pattern) {
 
   this->fn = fn;
   this->field = field;
-  this->addUsedField({field});
+  vector<string> fields = {field};
+  this->addUsedField(fields);
   this->pattern = pattern;
 }
 

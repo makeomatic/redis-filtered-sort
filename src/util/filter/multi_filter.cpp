@@ -14,8 +14,8 @@ MultiFilter::MultiFilter(vector<string> fields, string pattern) {
 
 bool MultiFilter::match(string id, map<string, string> record) {
   auto subFilters = this->getSubFilters();
-  for (size_t j = 0; j < subFilters.size(); j++) {
-    auto subFilter = subFilters[j];
+  for (size_t j = 0; j < subFilters->size(); j++) {
+    auto subFilter = subFilters->at(j);
     if (subFilter->match(id, record)) {
       return true;
     }
