@@ -14,27 +14,17 @@ using namespace std;
 using namespace boost::algorithm;
 namespace pt = boost::property_tree;
 
-AggregateCommand::AggregateCommand(AggregateArgs args) {
-  this->args = args;
-  this->init();
+AggregateCommand::AggregateCommand(AggregateArgs args): args(args) {
+  init();
 }
 
 AggregateCommand::~AggregateCommand() {
 }
 
-void log(string message) {
-  std::cout << "LOG--->" << message << "\n";
-}
-
 void AggregateCommand::init() {
-  try {
-    stringstream jsonText;
-    jsonText << args.filter;
-    boost::property_tree::json_parser::read_json(jsonText, this->jsonFilters);
-  }
-  catch (exception &e) {
-    log(e.what());
-  }
+  stringstream jsonText;
+  jsonText << args.filter;
+  boost::property_tree::json_parser::read_json(jsonText, jsonFilters);
 }
 
 int AggregateCommand::execute(redis::Context redis) {
@@ -45,20 +35,17 @@ int AggregateCommand::execute(redis::Context redis) {
     vector<pair<string, string>> aggregateFields;
     vector<string> fieldsNeeded;
 
-    for (pt::ptree::value_type &node : this->jsonFilters) {
+    for (pt::ptree::value_type &node : jsonFilters) {
       auto pair = make_pair(node.first.data(), node.second.data());
       aggregateFields.push_back(pair);
       fieldsNeeded.push_back(node.first.data());
     }
 
     if (aggregateFields.size() > 0) {
-      auto allMetaData = presortedData.loadMetadata(fieldsNeeded);
-
       pt::ptree resultDoc = pt::ptree();
-
       map<string, long> aggregated;
-      std::cerr << "Field needed:" << aggregateFields.size() << "\n";
-      std::cerr << "Metadata size:" << allMetaData.size() << "\n";
+
+      auto allMetaData = presortedData.loadMetadata(fieldsNeeded);
 
       for (size_t i = 0; i < allMetaData.size(); i++) {
         pair<string, map<string, string>> filterRecord = allMetaData[i];
@@ -82,8 +69,10 @@ int AggregateCommand::execute(redis::Context redis) {
       }
 
       stringstream responseStream;
+
       pt::write_json(responseStream, resultDoc, false);
       string response = responseStream.str();
+
       std::cerr << "Responding:" << response << "\n";
       redis.respondString(response);
 

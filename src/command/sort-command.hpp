@@ -8,7 +8,9 @@
 
 #include "redis/context.hpp"
 #include "util/filter/filter.hpp"
+#include "util/data.hpp"
 #include "redis/redismodule.h"
+#include "util/task-registry.h"
 
 namespace ms {
   using namespace std;
@@ -23,17 +25,26 @@ namespace ms {
     FilterInterface *filters;
     string idFilter;
     redis::Context &redis;
+    TaskRegistry &taskRegistry;
 
   public:
-    SortCommand(SortArgs args, redis::Context &redis);
+    SortCommand(SortArgs args, redis::Context &redis, TaskRegistry &registry);
 
     ~SortCommand();
+
+    string getTaskDescriptor();
 
     void init();
 
     void execute();
 
+    void doWork();
+
     void respond(string key);
+
+    void SortAndSaveData(ms::Data &sortData);
+
+    void UpdateKeySetAndExpire(string key);
   };
 } // namespace ms
 

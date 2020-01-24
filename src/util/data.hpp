@@ -38,9 +38,9 @@ namespace ms {
 
     size_t size();
 
-    vector<string> sort(string);
+    void sort(string);
 
-    vector<string> sortMeta(string, string);
+    void sortMeta(string, string);
 
     vector<string> filter(string);
 

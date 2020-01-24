@@ -79,16 +79,15 @@ vector<pair<string, map<string, string>>> Data::loadMetadata(vector<string> fiel
   return metaData;
 }
 
-vector<string> Data::sort(string order) {
+void Data::sort(string order) {
   if (order.compare("ASC") == 0) {
-    std::sort(this->data.begin(), this->data.end(), [](string &a, string &b) { return a.compare(b) <= 0; });
+    std::sort(this->data.begin(), this->data.end(), [](string &a, string &b) { return a.compare(b) < 0; });
   } else {
-    std::sort(this->data.begin(), this->data.end(), [](string &a, string &b) { return a.compare(b) >= 0; });
+    std::sort(this->data.begin(), this->data.end(), [](string &a, string &b) { return a.compare(b) > 0; });
   }
-  return this->data;
 };
 
-vector<string> Data::sortMeta(string field, string order) {
+void Data::sortMeta(string field, string order) {
   auto metaData = this->loadMetadata(vector<string>{field});
 
   auto sortAscFn = [&field](const DataRecord &a, const DataRecord &b) -> bool {
@@ -118,7 +117,6 @@ vector<string> Data::sortMeta(string field, string order) {
                 });
 
   this->data = result;
-  return result;
 };
 
 vector<string> Data::filterMeta(FilterInterface *filter) {

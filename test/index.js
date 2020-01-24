@@ -16,7 +16,7 @@ describe('filtered sort suite', function suite() {
     keyPrefix,
   });
   const monitor = redis.duplicate();
-  const mod = require('../index.js');
+  const mod = require('../src/index.js');
   const prepopulateDataLength = parseInt(process.env.PREPOPULAR || 1000, 10);
   const metadata = {};
   const insertedIds = [];
@@ -62,23 +62,23 @@ describe('filtered sort suite', function suite() {
 
   function sortedBy(comparator, listLength, field, jsSorted) {
     return function sorted(ids) {
-      console.debug('IDS', ids);
+      // console.debug('IDS', ids);
       const length = ids.pop();
-      console.debug('IDS', ids, length);
+      // console.debug('IDS', ids, length);
       if (typeof listLength === 'number') {
-        if (length !== listLength) {
-          console.debug('EEEEEEEEEEEEEEEEe', { listLength, length, ids, jsSorted });
-          if (jsSorted) {
-            const diff = ld.difference(ids, jsSorted);
-            const diff2 = ld.difference(jsSorted, ids)
-            console.debug(
-              {
-                diff_ids_sorted: diff.map((id) => metadata[id]),
-                diff_sorted_ids: diff2.map((id) => metadata[id]),
-              }
-            );
-          }
-        }
+        // if (length !== listLength) {
+        //   console.debug('EEEEEEEEEEEEEEEEe', { listLength, length, ids, jsSorted });
+        //   if (jsSorted) {
+        //     const diff = ld.difference(ids, jsSorted);
+        //     const diff2 = ld.difference(jsSorted, ids)
+        //     console.debug(
+        //       {
+        //         diff_ids_sorted: diff.map((id) => metadata[id]),
+        //         diff_sorted_ids: diff2.map((id) => metadata[id]),
+        //       }
+        //     );
+        //   }
+        // }
         expect(parseInt(length, 10)).to.be.eq(listLength);
       }
       const copy = [].concat(ids);
@@ -366,20 +366,20 @@ describe('filtered sort suite', function suite() {
 
   });
 
-  // describe('#C filter/incorrect any', function sortFilterExistsEmptySuite() {
-  //   const fieldName = 'fieldExists';
+  describe('#C filter/incorrect any', function sortFilterExistsEmptySuite() {
+    const fieldName = 'fieldExists';
 
-  //   const filter = mod.filter({
-  //     [fieldName]: { any: ['1',2,3] }
-  //   });
+    const filter = mod.filter({
+      [fieldName]: { any: ['1',2,3] }
+    });
 
-  //   it('direct func', function test() {
-  //     return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, Date.now())
-  //     .then((res) => {
-  //       expect(res[0]).to.equal(0);
-  //     })
-  //   });
-  // });
+    it('direct func', function test() {
+      return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, Date.now())
+      .then((res) => {
+        expect(res[0]).to.equal(0);
+      })
+    });
+  });
 
   describe('filter/exists', function sortFilterExistsEmptySuite() {
     const fieldName = 'fieldExists';
@@ -699,7 +699,7 @@ describe('filtered sort suite', function suite() {
     });
   });
 
-  describe.only('sort + complex filter suite', function sortComplexFilterSuite() {
+  describe('sort + complex filter suite', function sortComplexFilterSuite() {
     const filterIdString = 'id-';
     const name = 'an';
     const age = 5;
@@ -714,16 +714,15 @@ describe('filtered sort suite', function suite() {
         it => it.indexOf(color) >= 0
       )
       && meta.age >= age
-      && meta.age <= age * 3;
-      //&& a.indexOf(filterIdString) >= 0;
-        // && 
+      && meta.age <= age * 3
+      && a.indexOf(filterIdString) >= 0;
     };
 
 
     const offset = 10;
     const limit = 20;
     const filter = mod.filter({
-      //'#': filterIdString,
+      '#': filterIdString,
       '#multi': { fields, match: color },
       name,
       age: { gte: age, lte: age * 3 },
@@ -736,13 +735,11 @@ describe('filtered sort suite', function suite() {
       filteredIds = insertedIds.filter(jsFilter);
       invertedFilteredIds = invertedIds.filter(jsFilter);
       filteredLength = filteredIds.length;
-      console.debug('filteredLength', filteredLength, filteredIds)
     });
 
     it('sorts: asc', function test() {
       return redis
         .fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, Date.now())
-        .tap((result) => { console.debug('result', result)})
         .tap(sortedBy(comparatorASC, filteredLength, null, filteredIds));
     });
 
@@ -768,7 +765,7 @@ describe('filtered sort suite', function suite() {
     });
   });
 
-  describe.skip('aggregate filter', function suite() {
+  describe('aggregate filter', function suite() {
     it('sums up age and returns key', function test() {
       const filter = mod.filter({
         age: { gte: 10, lte: 40 },

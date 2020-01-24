@@ -28,6 +28,7 @@ namespace ms::redis {
     string hget(string key, string field);
 
     vector<string> zrangebyscore(string key, long long start, long long end);
+    vector<string> zrangebyscore(string key, string start, string end);
 
     long long llen(string key);
 

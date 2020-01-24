@@ -4,33 +4,36 @@
 #include <boost/format.hpp>
 #include <boost/algorithm/string/join.hpp>
 
-#include "util/data.hpp"
 #include "util/filter/parser.hpp"
 
 #include <iostream>
 
 using namespace ms;
 
-SortCommand::SortCommand(SortArgs args, redis::Context &redis) : redis(redis) {
-  this->args = args;
-  this->init();
+SortCommand::SortCommand(SortArgs args, redis::Context &redis, TaskRegistry &registry) : args(args), redis(redis), taskRegistry(registry) {
+  init();
 }
 
 SortCommand::~SortCommand() {
   delete filters;
 }
 
+string SortCommand::getTaskDescriptor() {
+  return pssKey.compare(fflKey) != 0 ? pssKey : boost::str(boost::format("%s::%s") % pssKey % fflKey);
+}
+
 void SortCommand::init() {
-  this->tempKeysSet = boost::str(boost::format("%s::fsort_temp_keys") % this->args.idSet);
+  tempKeysSet = boost::str(boost::format("%s::fsort_temp_keys") % args.idSet);
+
   stringstream jsonText;
   jsonText << args.filter;
-  boost::property_tree::json_parser::read_json(jsonText, this->jsonFilters);
-  this->filters = FilterParser::ParseJsonTree(this->jsonFilters);
+  boost::property_tree::json_parser::read_json(jsonText, jsonFilters);
+  filters = FilterParser::ParseJsonTree(jsonFilters);
 
   std::vector<string> ffKeyOpts = {args.idSet, args.order};
   std::vector<string> psKeyOpts = {args.idSet, args.order};
 
-  size_t filterSize = this->jsonFilters.size();
+  size_t filterSize = jsonFilters.size();
 
   if (!args.metaKey.empty()) {
     if (args.hashKey != "") {
@@ -45,15 +48,15 @@ void SortCommand::init() {
       ffKeyOpts.push_back(args.filter);
     }
   } else if (filterSize >= 1) {
-    boost::optional<string> idFilter = this->jsonFilters.get<string>("#");
+    boost::optional<string> idFilter = jsonFilters.get<string>("#");
     if (!idFilter.value().empty()) {
-      this->idFilter = idFilter.value();
+      idFilter = idFilter.value();
       ffKeyOpts.push_back(idFilter.value());
     }
   }
 
-  this->fflKey = boost::join(ffKeyOpts, ":");
-  this->pssKey = boost::join(psKeyOpts, ":");
+  fflKey = boost::join(ffKeyOpts, ":");
+  pssKey = boost::join(psKeyOpts, ":");
 }
 
 void SortCommand::respond(string key) {
@@ -64,7 +67,31 @@ void SortCommand::respond(string key) {
   }
 }
 
-void SortCommand::execute() {
+void SortCommand::SortAndSaveData(Data &sortData) {
+  auto redisCommand = redis.getCommand();
+  auto redisData = redis.getData();
+
+  if (args.metaKey.empty() || args.hashKey.empty()) {
+    sortData.sort(args.order);
+  } else {
+    sortData.sortMeta(args.hashKey, args.order);
+  }
+
+  sortData.save(pssKey);
+
+  redisCommand.pexpire(tempKeysSet, args.expire);
+  redisData.registerCaches(pssKey, tempKeysSet, args.curTime, args.expire);
+}
+
+void SortCommand::UpdateKeySetAndExpire(string key) {
+  auto redisCommand = redis.getCommand();
+  auto redisData = redis.getData();
+
+  redisCommand.pexpire(tempKeysSet, args.expire);
+  redisData.registerCaches(key, tempKeysSet, args.curTime, args.expire);
+}
+
+void SortCommand::doWork() {
   auto redisCommand = redis.getCommand();
   auto redisData = redis.getData();
 
@@ -73,80 +100,72 @@ void SortCommand::execute() {
 
   if (fflKType == REDISMODULE_KEYTYPE_LIST) {
     redisCommand.pexpire(tempKeysSet, args.expire);
-
     redisData.registerCaches(pssKey, tempKeysSet, args.curTime, args.expire);
     redisData.registerCaches(fflKey, tempKeysSet, args.curTime, args.expire);
-    return this->respond(fflKey);
+    return respond(fflKey);
   }
 
   Data sortData = Data(redis, args.metaKey);
 
   if (pssKType == REDISMODULE_KEYTYPE_LIST) {
-    //Respond pss
     if (fflKey.compare(pssKey) == 0) {
-      redisCommand.pexpire(tempKeysSet, args.expire);
-      redisData.registerCaches(pssKey, tempKeysSet, args.curTime, args.expire);
-      return this->respond(pssKey);
+      UpdateKeySetAndExpire(pssKey);
+      return respond(pssKey);
     }
-    //Load pss cache if sort requested
     sortData.loadList(pssKey);
   } else {
     sortData.loadSet(args.idSet);
+  }
 
-    if (sortData.size() > 0) {
-      if (args.metaKey.empty() || args.hashKey.empty()) {
-        sortData.sort(args.order);
-      } else {
-        sortData.sortMeta(args.hashKey, args.order);
-      }
-
-      if (redisCommand.type(pssKey) == REDISMODULE_KEYTYPE_EMPTY) {
-        sortData.save(pssKey);
-      } else {
-        std::cerr << "Skip write " << pssKey;
-      }
-
-      redisCommand.pexpire(tempKeysSet, args.expire);
-      redisData.registerCaches(pssKey, tempKeysSet, args.curTime, args.expire);
-    } else {
-      if (args.keyOnly == 1) {
-        return redis.respondString(pssKey);
-      }
-      return redis.respondLong(0);
+  if (sortData.size() == 0) {
+    if (args.keyOnly == 1) {
+      return redis.respondString(pssKey);
     }
+    return redis.respondLong(0);
+  }
 
-    if (this->fflKey.compare(pssKey) == 0) {
-      return this->respond(pssKey);
-    }
+  SortAndSaveData(sortData);
+  UpdateKeySetAndExpire(pssKey);
 
-    redisCommand.pexpire(tempKeysSet, args.expire);
-    redisData.registerCaches(pssKey, tempKeysSet, args.curTime, args.expire);
+  if (fflKey.compare(pssKey) == 0) {
+    return respond(pssKey);
   }
 
   vector<string> filteredData;
 
-  if (args.metaKey.empty()) {
-    filteredData = sortData.filter(idFilter);
-  } else {
-    filteredData = sortData.filterMeta(filters);
-  }
+  filteredData = args.metaKey.empty() ? sortData.filter(idFilter) : sortData.filterMeta(filters);
 
-  if (filteredData.size() > 0) {
-    if (redisCommand.type(fflKey) == REDISMODULE_KEYTYPE_EMPTY) {
-      sortData.save(fflKey, filteredData);
-    } else {
-      // RM_LOG_VERBOSE(this->redisContext,"Filter Key already created created key %s: ommiting write", this->fflKey.c_str());
-      std::cerr << "Skip write " << fflKey;
+  if (filteredData.size() == 0) {
+    if (args.keyOnly == 1) {
+      redis.respondString(fflKey);
+      return;
     }
-    redisCommand.pexpire(tempKeysSet, args.expire);
-    redisData.registerCaches(fflKey, tempKeysSet, args.curTime, args.expire);
-    return respond(fflKey);
-  }
-
-  if (args.keyOnly == 1) {
-    redis.respondString(fflKey);
+    redis.respondEmptyArray();
     return;
   }
 
-  redis.respondEmptyArray();
+  sortData.save(fflKey, filteredData);
+  UpdateKeySetAndExpire(fflKey);
+  return respond(fflKey);
+}
+
+void SortCommand::execute() {
+  auto taskDescriptor = getTaskDescriptor();
+
+  if (taskRegistry.taskExists(taskDescriptor) || taskRegistry.taskExists(pssKey)) {
+    auto boundProcessCommand = bind(&SortCommand::doWork, this);
+    taskRegistry.registerWaiter(taskDescriptor, [&boundProcessCommand]() {
+      boundProcessCommand();
+    });
+  } else {
+    taskRegistry.addTask(taskDescriptor);
+    this->doWork();
+    if (pssKey.compare(fflKey) == 0) {
+      taskRegistry.notifyAndDelete(taskDescriptor);
+    } else {
+      taskRegistry.notifyAndDelete(pssKey);
+      taskRegistry.notifyAndDelete(taskDescriptor);
+    }
+
+  }
 }

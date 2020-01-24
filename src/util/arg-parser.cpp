@@ -1,17 +1,17 @@
-#include "arg_parser.hpp"
+#include "arg-parser.hpp"
 #include "redis/redismodule.h"
 #include "redis/util.hpp"
 
 using namespace ms;
 using namespace redis;
 
-arg_parser::arg_parser() {
+arg::arg() {
 }
 
-arg_parser::~arg_parser() {
+arg::~arg() {
 }
 
-SortArgs arg_parser::parseSortCmdArgs(RedisModuleString **argv, int argc) {
+SortArgs arg::parseSortCmdArgs(RedisModuleString **argv, int argc) {
   SortArgs args;
   args.offset = 0;
   args.limit = 0;
@@ -39,7 +39,7 @@ SortArgs arg_parser::parseSortCmdArgs(RedisModuleString **argv, int argc) {
   return args;
 }
 
-AggregateArgs arg_parser::parseAggregateCmdArgs(RedisModuleString **argv, int argc) {
+AggregateArgs arg::parseAggregateCmdArgs(RedisModuleString **argv, int argc) {
   AggregateArgs args;
   args.pssKey = Utils::readString(argv[1]);
   args.metaKey = Utils::readString(argv[2]);
@@ -48,7 +48,7 @@ AggregateArgs arg_parser::parseAggregateCmdArgs(RedisModuleString **argv, int ar
   return args;
 };
 
-BustArgs arg_parser::parseBustCmdArgs(RedisModuleString **argv, int argc) {
+BustArgs arg::parseBustCmdArgs(RedisModuleString **argv, int argc) {
   BustArgs args;
   args.idSet = Utils::readString(argv[1]);
   args.expire = 30000;

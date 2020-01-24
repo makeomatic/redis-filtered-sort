@@ -1,12 +1,11 @@
 redis:
-  image: makeomatic/redis_filter_mod
-  container_name: redis
+  build: ../
   hostname: redis
   expose:
     - "6379"
-
+#  command: 'redis-server --loadmodule /usr/local/lib/libredis_filtered_sort.so'
 tester:
-  image: makeomatic/node:7.5.0
+  image: makeomatic/node:12
   links:
     - redis
   working_dir: /src

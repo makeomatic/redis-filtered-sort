@@ -7,12 +7,12 @@
 namespace ms {
   using namespace std;
 
-  class arg_parser {
+  class arg {
 
   public:
-    arg_parser();
+    arg();
 
-    ~arg_parser();
+    ~arg();
 
     SortArgs parseSortCmdArgs(RedisModuleString **, int);
 

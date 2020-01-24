@@ -8,7 +8,6 @@ using namespace ms;
 GenericFilter::GenericFilter() {};
 
 GenericFilter::~GenericFilter() {
-  std::cerr << "Destructing filter\n";
   for (auto &filter: filters) {
     delete(filter);
   }

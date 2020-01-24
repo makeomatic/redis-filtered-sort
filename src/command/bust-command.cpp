@@ -4,7 +4,6 @@
 #include <iostream>
 #include <boost/format.hpp>
 #include <boost/algorithm/string/join.hpp>
-#include <cmath>
 
 using namespace ms;
 using namespace std;
@@ -23,18 +22,15 @@ void BustCommand::init() {
 }
 
 int BustCommand::execute(redis::Context redis) {
-  std::cerr << "Cleaning caches " << tempKeysSet << " Curtime" << args.curTime << " Expire " << args.expire << "\n";
-
   long long boundary = args.curTime - args.expire;
   auto cmd = redis.getCommand();
 
-  auto expiredKeys = cmd.zrangebyscore(tempKeysSet, boundary, INFINITY);
+  auto expiredKeys = cmd.zrangebyscore(tempKeysSet, to_string(boundary), "+inf");
 
   for (auto &key : expiredKeys) {
     cmd.del(key);
     cmd.zrem(tempKeysSet, key);
   }
-  // ????
 
   redis.respondLong(expiredKeys.size());
   return 1;
