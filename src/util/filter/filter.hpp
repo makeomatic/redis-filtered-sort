@@ -24,30 +24,7 @@ namespace ms {
 
     virtual vector<string> getUsedFields() = 0;
 
-    virtual ~FilterInterface() {};
-  };
-
-  class GenericFilter : public FilterInterface {
-  public:
-    GenericFilter();
-
-    ~GenericFilter() override;
-
-    vector<FilterInterface *>* getSubFilters() override;
-
-    vector<string> getUsedFields() override;
-
-    bool match(string id, map<string, string> value) override;
-
-    void addUsedField(vector<string> &fields) override;
-
-    void addSubFilter(FilterInterface *filter) override;
-
-    void copyFilters(FilterInterface *filter) override;
-
-  private:
-    vector<string> fieldsUsed;
-    vector<FilterInterface *> filters;
+    virtual ~FilterInterface() = default;;
   };
 
 } // namespace ms

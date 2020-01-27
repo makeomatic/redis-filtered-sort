@@ -1,13 +1,13 @@
 #include <thread>
 #include "redis/redismodule.h"
-#include "command/aggregate-command.hpp"
-#include "command/bust-command.hpp"
-#include "command/sort-command.hpp"
+#include "command/aggregate-command.cpp"
+#include "command/bust-command.cpp"
+#include "command/sort-command.cpp"
 
-#include "util/arg-parser.hpp"
-#include "redis/util.hpp"
-#include "util/thread-pool.hpp"
-#include "util/task-registry.h"
+#include "util/arg-parser.cpp"
+#include "redis/util.cpp"
+#include "util/thread-pool.cpp"
+#include "util/task-registry.cpp"
 
 ms::ThreadPool *threadPool;
 ms::TaskRegistry taskRegistry;
@@ -17,9 +17,9 @@ typename std::result_of<Fn(RedisModuleCtx *ctx, RedisModuleString **argv, int ar
 redisFunctionWrapper(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
   ms::redis::GlobalUtil::AutoMemory(ctx);
 
-  int ctxFlags = ms::redis::GlobalUtil::GetContextFlags(ctx);
-  int isLua = ctxFlags & REDISMODULE_CTX_FLAGS_LUA;
-  int isMulti = ctxFlags & REDISMODULE_CTX_FLAGS_MULTI;
+  auto ctxFlags = ms::redis::GlobalUtil::GetContextFlags(ctx);
+  auto isLua = ctxFlags & REDISMODULE_CTX_FLAGS_LUA;
+  auto isMulti = ctxFlags & REDISMODULE_CTX_FLAGS_MULTI;
 
   if (isLua || isMulti) {
     RedisModule_ReplyWithError(ctx, "Can't work in MULTI mode or LUA script!");
@@ -37,14 +37,14 @@ int FSortBust_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int ar
     return ms::redis::GlobalUtil::WrongArity(ctx);
   }
 
-  RedisModuleBlockedClient *bc = ms::redis::GlobalUtil::BlockClient(ctx, NULL, NULL, NULL, 0);
+  RedisModuleBlockedClient *bc = ms::redis::GlobalUtil::BlockClient(ctx, nullptr, nullptr, nullptr, 0);
 
   threadPool->Enqueue([bc, argv, argc]() {
     auto redis = ms::redis::Context(ms::redis::GlobalUtil::GetThreadSafeContext(bc));
-    auto cmdArgs = ms::arg().parseBustCmdArgs(argv, argc);
+    auto cmdArgs = ms::ArgParser().parseBustCmdArgs(argv, argc);
     auto cmd = ms::BustCommand(cmdArgs);
     cmd.execute(redis);
-    ms::redis::GlobalUtil::UnblockClient(bc, NULL);
+    ms::redis::GlobalUtil::UnblockClient(bc, nullptr);
   });
 
   return REDISMODULE_OK;
@@ -54,14 +54,14 @@ int FSortAggregate_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, i
   if (argc != 4) {
     return ms::redis::GlobalUtil::WrongArity(ctx);
   }
-  RedisModuleBlockedClient *bc = ms::redis::GlobalUtil::BlockClient(ctx, NULL, NULL, NULL, 0);
+  RedisModuleBlockedClient *bc = ms::redis::GlobalUtil::BlockClient(ctx, nullptr, nullptr, nullptr, 0);
 
   threadPool->Enqueue([bc, argv, argc]() {
     auto redis = ms::redis::Context(ms::redis::GlobalUtil::GetThreadSafeContext(bc));
-    auto cmdArgs = ms::arg().parseAggregateCmdArgs(argv, argc);
+    auto cmdArgs = ms::ArgParser().parseAggregateCmdArgs(argv, argc);
     auto cmd = ms::AggregateCommand(cmdArgs);
     cmd.execute(redis);
-    ms::redis::GlobalUtil::UnblockClient(bc, NULL);
+    ms::redis::GlobalUtil::UnblockClient(bc, nullptr);
   });
 
   return REDISMODULE_OK;
@@ -72,24 +72,10 @@ int FSort_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     return ms::redis::GlobalUtil::WrongArity(ctx);
   }
 
-  RedisModuleBlockedClient *bc = ms::redis::GlobalUtil::BlockClient(ctx, NULL, NULL, NULL, 0);
+  auto cmdArgs = ms::ArgParser::parseSortCmdArgs(argv, argc);
+  auto cmd = new ms::SortCommand(cmdArgs, ctx, taskRegistry);
 
-  threadPool->Enqueue([bc, argv, argc]() -> void {
-    auto thSafeCtx = ms::redis::GlobalUtil::GetThreadSafeContext(bc);
-
-    try {
-      auto cmdArgs = ms::arg().parseSortCmdArgs(argv, argc);
-      auto redis = ms::redis::Context(thSafeCtx);
-      auto cmd = ms::SortCommand(cmdArgs, redis, taskRegistry);
-
-      cmd.execute();
-      ms::redis::GlobalUtil::UnblockClient(bc, NULL);
-    } catch(std::exception &e) {
-      std::string errMessage = boost::str(boost::format("Command error: %s") %e.what());
-      RedisModule_ReplyWithError(thSafeCtx, errMessage.c_str());
-      ms::redis::GlobalUtil::UnblockClient(bc, NULL);
-    }
-  });
+  cmd->execute(threadPool);
 
   return REDISMODULE_OK;
 }

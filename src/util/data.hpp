@@ -4,7 +4,7 @@
 #include <vector>
 #include <map>
 #include <string>
-#include "redis/context.hpp"
+#include "redis/context.cpp"
 
 #include "./filter/filter.hpp"
 
@@ -14,7 +14,7 @@ namespace ms {
   class Data {
   private:
     redis::Context &redis;
-    vector<string> data;
+    vector<string> data = {};
     string dataKeyTemplate;
 
   public:

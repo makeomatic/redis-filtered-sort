@@ -4,8 +4,7 @@
 #include "boost/algorithm/string/replace.hpp"
 #include <iostream>
 
-#include "filter/filter.hpp"
-#include "filter/scalar_filter.hpp"
+#include "filter/scalar-filter.cpp"
 
 using namespace ms;
 

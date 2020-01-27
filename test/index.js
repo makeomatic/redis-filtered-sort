@@ -62,23 +62,8 @@ describe('filtered sort suite', function suite() {
 
   function sortedBy(comparator, listLength, field, jsSorted) {
     return function sorted(ids) {
-      // console.debug('IDS', ids);
       const length = ids.pop();
-      // console.debug('IDS', ids, length);
       if (typeof listLength === 'number') {
-        // if (length !== listLength) {
-        //   console.debug('EEEEEEEEEEEEEEEEe', { listLength, length, ids, jsSorted });
-        //   if (jsSorted) {
-        //     const diff = ld.difference(ids, jsSorted);
-        //     const diff2 = ld.difference(jsSorted, ids)
-        //     console.debug(
-        //       {
-        //         diff_ids_sorted: diff.map((id) => metadata[id]),
-        //         diff_sorted_ids: diff2.map((id) => metadata[id]),
-        //       }
-        //     );
-        //   }
-        // }
         expect(parseInt(length, 10)).to.be.eq(listLength);
       }
       const copy = [].concat(ids);
@@ -89,11 +74,8 @@ describe('filtered sort suite', function suite() {
         // therefore we compare sort by derivative
         // leaving this as default 
         const map = id => metadata[id][field];
-        // console.log('sortedBy', copy, ids);
-        //console.log('sortedByData', copy.map(map), ids.map(map));
         expect(copy.map(map)).to.be.deep.eq(ids.map(map));
       } else {
-        // console.log('sortedBy need', copy, 'got', ids);
         expect(copy).to.be.deep.eq(ids);
       }
     };
@@ -763,6 +745,89 @@ describe('filtered sort suite', function suite() {
           expect(ids).to.be.deep.eq(invertedFilteredIds.slice(offset, offset + limit));
         });
     });
+  });
+
+  describe('sort/filter parallel execution suite', function sortComplexFilterSuite() {
+    const age = 5;
+
+    const jsFilter = a => {
+      const meta = metadata[a];
+      return meta.age >= age && meta.age <= age * 3;
+    };
+
+    const offset = 10;
+    const limit = 20;
+
+    const filter = mod.filter({
+      age: { gte: age, lte: age * 3 },
+    });
+
+    let filteredIds;
+    let invertedFilteredIds;
+    let filteredLength;
+
+    before(function pretest() {
+      filteredIds = insertedIds.filter(jsFilter);
+      invertedFilteredIds = invertedIds.filter(jsFilter);
+      filteredLength = filteredIds.length;
+    });
+
+    it('sorts: asc/desc single connection', async function test() {
+      const promises = [];
+      const redisCopy = redis.duplicate();
+
+      for (let i = 0; i<30; i++) {
+        promises.push(redisCopy
+            .fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, Date.now())
+            .tap(sortedBy(comparatorASC, filteredLength, null, filteredIds)));
+      }
+
+      await Promise.all(promises);
+      await redisCopy.disconnect();
+    });
+
+    it('sorts: asc/desc single 2 connections with multi request', async function test() {
+      const promises = [];
+      const redises = [];
+      for (let i = 0; i<2; i++) {
+        const redisCopy = redis.duplicate();
+        redises.push(redisCopy);
+        for (let j = 0; j < 10; j++ ) {
+          promises.push(redisCopy
+            .fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, Date.now())
+            .tap(sortedBy(comparatorASC, filteredLength, null, filteredIds)));
+
+          promises.push(redisCopy
+            .fsort(idSetKey, metaKeyPattern, null, 'DESC', filter, Date.now())
+            .tap(sortedBy(comparatorDESC, filteredLength, null, filteredIds)));
+        }
+      }
+
+      await Promise.all(promises);
+      await Promise.map(redises, (r) => r.disconnect)
+    });
+
+    it('sorts: asc/desc multi connection', async function test() {
+      const promises = [];
+      const redises = [];
+      for (let i = 0; i<2; i++) {
+        const redisCopy = redis.duplicate();
+        const redisSecondCopy = redis.duplicate();
+        redises.push(redisCopy, redisSecondCopy);
+
+        promises.push(redisCopy
+          .fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, Date.now())
+          .tap(sortedBy(comparatorASC, filteredLength, null, filteredIds)));
+
+        promises.push(redisSecondCopy
+          .fsort(idSetKey, metaKeyPattern, null, 'DESC', filter, Date.now())
+          .tap(sortedBy(comparatorDESC, filteredLength, null, filteredIds)));
+      }
+
+      await Promise.all(promises);
+      await Promise.map(redises, (r) => r.disconnect)
+    });
+
   });
 
   describe('aggregate filter', function suite() {

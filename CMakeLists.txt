@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 3.15)
 project(redis_filtered_sort)
 set(LANGUAGE CXX)
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 
 set(CMAKE_VERBOSE_MAKEFILE on )
 set(Boost_USE_STATIC_LIBS  Off)
 
-find_package(Boost REQUIRED COMPONENTS thread)
+find_package(Boost REQUIRED COMPONENTS thread log)
 
 MESSAGE(Boost ${Boost_LIBRARY_DIR_RELEASE})
 
@@ -20,6 +20,6 @@ FILE(GLOB_RECURSE SOURCE_FILES src/*/*.cpp)
 set (CMAKE_CXX_FLAGS "-g -Wall")
 
 add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES})
-
-target_link_libraries(${PROJECT_NAME} pthread Boost::thread)
+add_definitions(-DBOOST_LOG_DYN_LINK)
+target_link_libraries(${PROJECT_NAME} pthread Boost::thread Boost::log)
 target_sources(${PROJECT_NAME} PRIVATE ${SOURCE_FILES} PUBLIC src/filter-module)

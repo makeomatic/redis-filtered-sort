@@ -1,52 +1,67 @@
-#include "filter.hpp"
+#ifndef FILTER_FILTER
+#define FILTER_FILTER
+
 #include <string>
 #include <vector>
-#include <iostream>
+#include <algorithm>
 
-using namespace ms;
+#include "filter.hpp"
 
-GenericFilter::GenericFilter() {};
 
-GenericFilter::~GenericFilter() {
-  for (auto &filter: filters) {
-    delete(filter);
-  }
-};
+namespace ms {
+  class GenericFilter : public FilterInterface {
+  public:
+    GenericFilter() = default;
 
-vector<FilterInterface *> *GenericFilter::getSubFilters() {
-  return &filters;
-};
+    ~GenericFilter() override {
+      for (auto &filter: filters) {
+        delete (filter);
+      }
+    };
 
-vector<string> GenericFilter::getUsedFields() {
-  return fieldsUsed;
+    vector<FilterInterface *> *getSubFilters() override {
+      return &filters;
+    };
+
+    vector<string> getUsedFields() override {
+      return fieldsUsed;
+    };
+
+    bool match(string id, map<string, string> record) override {
+      auto subFilters = this->getSubFilters();
+
+      for (auto subFilter : *subFilters) {
+        if (!subFilter->match(id, record)) {
+          return false;
+        }
+      }
+
+      return true;
+    };
+
+    void addUsedField(vector<string> &fields) override {
+      fieldsUsed.insert(fieldsUsed.end(), fields.cbegin(), fields.cend());
+      auto uniqueIt = std::unique(fieldsUsed.begin(), fieldsUsed.end());
+      fieldsUsed.resize( std::distance(fieldsUsed.begin(), uniqueIt));
+    };
+
+    void addSubFilter(FilterInterface *filter) override {
+      filters.push_back(filter);
+      auto usedFields = filter->getUsedFields();
+      this->addUsedField(usedFields);
+    };
+
+    void copyFilters(FilterInterface *filter) override {
+      auto subFilters = filter->getSubFilters();
+      auto usedFields = filter->getUsedFields();
+      filters.insert(filters.end(), subFilters->cbegin(), subFilters->cend());
+      this->addUsedField(usedFields);
+    };
+
+  private:
+    vector<string> fieldsUsed;
+    vector<FilterInterface *> filters;
+  };
 }
 
-bool GenericFilter::match(string id, map<string, string> record) {
-  auto subFilters = this->getSubFilters();
-
-  for (size_t j = 0; j < subFilters->size(); j++) {
-    auto subFilter = subFilters->at(j);
-    if (!subFilter->match(id, record)) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-void GenericFilter::addUsedField(vector<string> &fields) {
-  fieldsUsed.insert(fieldsUsed.end(), fields.cbegin(), fields.cend());
-}
-
-void GenericFilter::addSubFilter(FilterInterface *filter) {
-  filters.push_back(filter);
-  auto usedFields = filter->getUsedFields();
-  this->addUsedField(usedFields);
-};
-
-void GenericFilter::copyFilters(FilterInterface *filter) {
-  auto subFilters = filter->getSubFilters();
-  auto usedFields = filter->getUsedFields();
-  filters.insert(filters.end(), subFilters->cbegin(), subFilters->cend());
-  this->addUsedField(usedFields);
-};
+#endif

@@ -1,85 +1,90 @@
-#include "aggregate-command.hpp"
+#ifndef __AGGREGATE_COMMAND
+#define __AGGREGATE_COMMAND
 
 #include <string>
 #include <map>
 #include <iostream>
-#include <boost/format.hpp>
-#include <boost/algorithm/string/join.hpp>
-#include <boost/algorithm/string/replace.hpp>
+
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
 
 #include "util/data.hpp"
+#include "redis/context.cpp"
 
-using namespace ms;
-using namespace std;
-using namespace boost::algorithm;
-namespace pt = boost::property_tree;
+#include "./cmd-args.hpp"
 
-AggregateCommand::AggregateCommand(AggregateArgs args): args(args) {
-  init();
-}
+namespace ms {
+  namespace pt = boost::property_tree;
 
-AggregateCommand::~AggregateCommand() {
-}
+  class AggregateCommand {
+  private:
+    AggregateArgs args;
+    boost::property_tree::ptree jsonFilters;
 
-void AggregateCommand::init() {
-  stringstream jsonText;
-  jsonText << args.filter;
-  boost::property_tree::json_parser::read_json(jsonText, jsonFilters);
-}
+  public:
+    explicit AggregateCommand(AggregateArgs &args): args(args) {
+      stringstream jsonText;
+      jsonText << args.filter;
+      boost::property_tree::json_parser::read_json(jsonText, jsonFilters);
+    };
 
-int AggregateCommand::execute(redis::Context redis) {
-  auto presortedData = Data(redis, args.metaKey);
-  presortedData.loadList(args.pssKey);
+    ~AggregateCommand() = default;
 
-  if (presortedData.size() > 0) {
-    vector<pair<string, string>> aggregateFields;
-    vector<string> fieldsNeeded;
+    int execute(redis::Context redis) {
+      auto presortedData = Data(redis, args.metaKey);
+      presortedData.loadList(args.pssKey);
 
-    for (pt::ptree::value_type &node : jsonFilters) {
-      auto pair = make_pair(node.first.data(), node.second.data());
-      aggregateFields.push_back(pair);
-      fieldsNeeded.push_back(node.first.data());
-    }
+      if (presortedData.size() > 0) {
+        vector<pair<string, string>> aggregateFields;
+        vector<string> fieldsNeeded;
 
-    if (aggregateFields.size() > 0) {
-      pt::ptree resultDoc = pt::ptree();
-      map<string, long> aggregated;
+        for (pt::ptree::value_type &node : jsonFilters) {
+          auto pair = make_pair(node.first.data(), node.second.data());
+          aggregateFields.emplace_back(pair);
+          fieldsNeeded.emplace_back(node.first.data());
+        }
 
-      auto allMetaData = presortedData.loadMetadata(fieldsNeeded);
+        if (!aggregateFields.empty()) {
+          pt::ptree resultDoc = pt::ptree();
+          map<string, long> aggregated;
 
-      for (size_t i = 0; i < allMetaData.size(); i++) {
-        pair<string, map<string, string>> filterRecord = allMetaData[i];
-        map<string, string> filterData = filterRecord.second;
+          auto allMetaData = presortedData.loadMetadata(fieldsNeeded);
 
-        for (size_t fieldIndex = 0; fieldIndex < aggregateFields.size(); fieldIndex++) {
-          pair<string, string> aggregateField = aggregateFields[fieldIndex];
-          string aggrFn = aggregateField.second;
-          string aggrField = aggregateField.first;
-          auto recordValue = filterData[aggrField];
+          for (const auto& filterRecord : allMetaData) {
+            map<string, string> filterData = filterRecord.second;
 
-          if (aggrFn.compare("sum") == 0) {
-            long parsedValue = stoll(recordValue.empty() ? "0" : recordValue);
-            aggregated[aggrField] = aggregated[aggrField] + parsedValue;
+            for (const auto& aggregateField : aggregateFields) {
+              string aggrFn = aggregateField.second;
+              string aggrField = aggregateField.first;
+              auto recordValue = filterData[aggrField];
+
+              if (aggrFn == "sum") {
+                long parsedValue = stoll(recordValue.empty() ? "0" : recordValue);
+                aggregated[aggrField] = aggregated[aggrField] + parsedValue;
+              }
+            }
           }
+
+          for (auto &aggrResult : aggregated) {
+            resultDoc.put(aggrResult.first, aggrResult.second);
+          }
+
+          stringstream responseStream;
+
+          pt::write_json(responseStream, resultDoc, false);
+          string response = responseStream.str();
+
+          std::cerr << "Responding:" << response << "\n";
+          redis.respondString(response);
+
+          return 0;
         }
       }
+      string emptyResponse = "{}";
+      redis.respondString(emptyResponse);
+      return 1;
+    };
+  };
+} // namespace ms
 
-      for (auto &aggrResult : aggregated) {
-        resultDoc.put(aggrResult.first, aggrResult.second);
-      }
-
-      stringstream responseStream;
-
-      pt::write_json(responseStream, resultDoc, false);
-      string response = responseStream.str();
-
-      std::cerr << "Responding:" << response << "\n";
-      redis.respondString(response);
-
-      return 0;
-    }
-  }
-
-  redis.respondString("{}");
-  return 1;
-}
+#endif

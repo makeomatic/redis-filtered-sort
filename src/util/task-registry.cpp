@@ -1,5 +1,5 @@
-#ifndef REDIS_FILTERED_SORT_TASK_REGISTRY_H
-#define REDIS_FILTERED_SORT_TASK_REGISTRY_H
+#ifndef REDIS_FILTERED_SORT_TASK_REGISTRY
+#define REDIS_FILTERED_SORT_TASK_REGISTRY
 
 #include <string>
 #include <boost/signals2.hpp>
@@ -12,7 +12,7 @@ namespace ms {
 
   class NoTaskException : public std::logic_error {
   public:
-    NoTaskException(string message) : std::logic_error(message) {};
+    explicit NoTaskException(const string& message) : std::logic_error(message) {};
   };
 
   class Observer {
@@ -30,15 +30,16 @@ namespace ms {
     map<string, Observer> cmdSlots;
 
     bool _taskExists(const string& taskName) {
-      return cmdSlots.find(taskName) != cmdSlots.end();
+      auto found = cmdSlots.find(taskName);
+      return found != cmdSlots.end();
     };
 
   public:
     typedef function<void()> CallbackFn;
 
-    bool taskExists(string taskName) {
+    bool taskExists(const string& taskName) {
       globalMutex.lock();
-      auto result = _taskExists(taskName);
+      bool result = _taskExists(taskName);
       globalMutex.unlock();
       return result;
     }
@@ -113,4 +114,4 @@ namespace ms {
 
 }
 
-#endif //REDIS_FILTERED_SORT_TASK_REGISTRY_H
+#endif
