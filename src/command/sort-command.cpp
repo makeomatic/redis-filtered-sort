@@ -159,7 +159,7 @@ namespace ms {
               ms::redis::GlobalUtil::UnblockClient(bc, NULL);
             }
           });
-        }
+        };
       });
 
       wrapperThread.detach();

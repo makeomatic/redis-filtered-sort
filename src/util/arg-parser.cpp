@@ -37,7 +37,7 @@ namespace ms {
       if (argc > 9)
         args.expire = Utils::readLong(argv[9], 30000);
 
-      if (argc == 11 && argv[10] != NULL) {
+      if (argc == 11 && argv[10] != nullptr) {
         args.keyOnly = 1;
       } else {
         args.keyOnly = 0;

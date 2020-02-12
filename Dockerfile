@@ -4,7 +4,6 @@ RUN apk --no-cache add \
 		g++ \
 		make \
 		cmake \
-		boost-static \
 		boost-dev \
     && apk add \
         bash

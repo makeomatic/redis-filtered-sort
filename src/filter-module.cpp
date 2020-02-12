@@ -41,7 +41,7 @@ int FSortBust_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int ar
 
   threadPool->Enqueue([bc, argv, argc]() {
     auto redis = ms::redis::Context(ms::redis::GlobalUtil::GetThreadSafeContext(bc));
-    auto cmdArgs = ms::ArgParser().parseBustCmdArgs(argv, argc);
+    auto cmdArgs = ms::ArgParser::parseBustCmdArgs(argv, argc);
     auto cmd = ms::BustCommand(cmdArgs);
     cmd.execute(redis);
     ms::redis::GlobalUtil::UnblockClient(bc, nullptr);
@@ -58,7 +58,7 @@ int FSortAggregate_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, i
 
   threadPool->Enqueue([bc, argv, argc]() {
     auto redis = ms::redis::Context(ms::redis::GlobalUtil::GetThreadSafeContext(bc));
-    auto cmdArgs = ms::ArgParser().parseAggregateCmdArgs(argv, argc);
+    auto cmdArgs = ms::ArgParser::parseAggregateCmdArgs(argv, argc);
     auto cmd = ms::AggregateCommand(cmdArgs);
     cmd.execute(redis);
     ms::redis::GlobalUtil::UnblockClient(bc, nullptr);
