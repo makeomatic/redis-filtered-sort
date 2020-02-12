@@ -1,4 +1,5 @@
-FROM alpine:edge AS build-mod
+# Alpine image should be used same as the base image of the `redis:${ver}-alpine`
+FROM alpine:3.10 AS build-mod
 RUN apk --no-cache add \
 		coreutils \
 		g++ \
@@ -17,8 +18,11 @@ FROM redis:5.0.5-alpine
 RUN apk --no-cache add \
 		libgcc \
 		libstdc++ \
-		boost-thread
+		boost
+
 COPY --from=build-mod /src/build/libredis_filtered_sort.so /usr/local/lib/libredis_filtered_sort.so
+
 ENTRYPOINT ["docker-entrypoint.sh"]
+
 CMD ["redis-server", "--loadmodule", "/usr/local/lib/libredis_filtered_sort.so"]
 EXPOSE 6379

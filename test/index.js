@@ -16,7 +16,7 @@ describe('filtered sort suite', function suite() {
     keyPrefix,
   });
   const monitor = redis.duplicate();
-  const mod = require('../src/index.js');
+  const mod = require('../jssrc/index.js');
   const prepopulateDataLength = parseInt(process.env.PREPOPULAR || 1000, 10);
   const metadata = {};
   const insertedIds = [];

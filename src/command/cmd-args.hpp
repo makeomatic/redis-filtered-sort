@@ -7,7 +7,6 @@ namespace ms {
   using namespace std;
 
   struct SortArgs {
-    string tempKeysSet;
     string idSet;
     string metaKey;
     string hashKey;

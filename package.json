@@ -8,7 +8,7 @@
   },
   "scripts": {
     "test": "./test/docker.sh",
-    "compile": "make all",
+    "compile": "rimraf ./lib; babel -d ./lib --copy-files ./jssrc",
     "prepublish": "npm run compile",
     "postversion": "git push && npm publish && git push --tags"
   },

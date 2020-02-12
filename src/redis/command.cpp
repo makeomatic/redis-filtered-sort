@@ -86,6 +86,7 @@ namespace ms::redis {
       }
       return {};
     };
+
     vector<string> zrangebyscore(const string& key, const string& start, const string& stop) {
       RedisModuleCallReply *reply = RedisModule_Call(ctx, "ZRANGEBYSCORE", "ccc", key.c_str(), start.c_str(), stop.c_str());
 
@@ -102,7 +103,6 @@ namespace ms::redis {
     };
 
     vector<string> lrange(const string& key, long long start, long long stop) {
-      RM_LOG_DEBUG(ctx, "lrange Getting key %s", key.c_str());
       RedisModuleCallReply *reply = RedisModule_Call(this->ctx, "lrange", "cll", key.c_str(), start, stop);
 
       auto replyType = RedisModule_CallReplyType(reply);
@@ -113,7 +113,6 @@ namespace ms::redis {
     };
 
     vector<string> smembers(const string& key) {
-      RM_LOG_DEBUG(ctx, "Getting key %s", key.c_str());
       RedisModuleCallReply *reply = RedisModule_Call(ctx, "SMEMBERS", "c", key.c_str());
 
       auto replyType = RedisModule_CallReplyType(reply);
