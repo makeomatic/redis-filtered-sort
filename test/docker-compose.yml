@@ -1,6 +1,5 @@
 redis:
-  build: ../
-  hostname: redis
+  image: makeomatic/redis-fsort:${npm_package_image_redis_version}-${npm_package_version}
   expose:
     - "6379"
 tester:
