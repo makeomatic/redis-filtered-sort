@@ -21,9 +21,17 @@ coverage
 
 # Compiled binary addons (http://nodejs.org/api/addons.html)
 build/Release
-lib
+/lib
 
 # Dependency directory
 # https://www.npmjs.org/doc/misc/npm-faq.html#should-i-check-my-node_modules-folder-into-git
 node_modules
-test/dump
+
+# So o files
+*.so
+*.o
+*.lo
+.vscode
+*.o
+*.a
+*.db

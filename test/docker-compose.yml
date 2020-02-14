@@ -1,12 +1,9 @@
 redis:
-  image: redis:3.2.7-alpine
-  container_name: redis
-  hostname: redis
+  image: makeomatic/redis-fsort:${npm_package_image_redis_version}-${npm_package_version}
   expose:
     - "6379"
-
 tester:
-  image: makeomatic/node:7.5.0
+  image: makeomatic/node:12
   links:
     - redis
   working_dir: /src

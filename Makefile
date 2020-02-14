@@ -1,19 +1,13 @@
-SHELL := /bin/sh
-BABEL := ./node_modules/.bin/babel
-THIS_FILE := $(lastword $(MAKEFILE_LIST))
+DOCKER_IMAGE="makeomatic/redis_filter_mod"
 
-BUILD_DIR := ./lib
-SOURCES := index.js filtered-list-bust.lua sorted-filtered-list.lua groupped-list.lua
+ifdef IMAGE_NAME
+	DOCKER_IMAGE = $(IMAGE_NAME)
+endif
 
-$(BUILD_DIR)/%.js: %.js
-		$(BABEL) $*.js -d $@
+docker-push:
+	docker push $(DOCKER_IMAGE)
+docker-build:
+	docker build . -f ./Dockerfile -t $(DOCKER_IMAGE)
+docker-rebuild: 
+	docker build . --no-cache -f ./Dockerfile -t $(DOCKER_IMAGE)
 
-$(BUILD_DIR)/%.lua: %.lua
-		cp $*.lua $@
-
-clean:
-	rm -rf $(BUILD_DIR)
-
-build: $(foreach src, $(SOURCES), $(BUILD_DIR)/$(src))
-
-all: clean build

@@ -1,24 +1,29 @@
 {
   "name": "redis-filtered-sort",
   "version": "2.3.0",
-  "description": "Exports LUA script, which is able to perform multi filter operations, as well as sorts",
+  "description": "Exports redis-module and wrapper, which is able to perform multi filter operations, as well as sorts",
   "main": "./lib",
   "engine": {
     "node": ">= 7.6.0"
   },
+  "image": {
+    "alpine_version": "3.10",
+    "redis_version" : "5.0.5"
+  },
   "scripts": {
-    "test": "./test/docker.sh",
-    "compile": "make all",
+    "compile": "rimraf ./lib; babel -d ./lib --copy-files ./jssrc",
     "prepublish": "npm run compile",
-    "postversion": "git push && npm publish && git push --tags"
+    "test": "mdep test run",
+    "pretest": "yarn build-redis",
+    "build-redis": "./scripts/build_image.sh -v ${npm_package_image_redis_version} -a ${npm_package_image_alpine_version}"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/makeomatic/redis-filtered-sort.git"
   },
   "keywords": [
-    "lua",
     "redis",
+    "redis-mod",
     "sort",
     "filter",
     "multi-sort"
@@ -38,12 +43,20 @@
     "babel-plugin-transform-strict-mode": "^6.24.1",
     "babel-register": "^6.24.1",
     "chai": "^3.4.1",
+    "cross-env": "^7.0.0",
     "faker": "^4.1.0",
     "ioredis": "^2.4.0",
     "lodash": "^4.16.3",
     "mocha": "^3.3.0"
   },
   "dependencies": {
+    "@makeomatic/deploy": "^10.1.1",
     "cluster-key-slot": "^1.0.6"
+  },
+  "husky": {
+    "hooks": {
+      "commit-msg": "commitlint -e $HUSKY_GIT_PARAMS",
+      "prepare-commit-msg": "./node_modules/@makeomatic/deploy/git-hooks/prepare-commit-msg $HUSKY_GIT_PARAMS"
+    }
   }
 }
