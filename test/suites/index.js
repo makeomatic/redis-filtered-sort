@@ -1,10 +1,9 @@
-'use strict';
-
 const Promise = require('bluebird');
 const Redis = require('ioredis');
 const { expect } = require('chai');
 const faker = require('faker');
 const ld = require('lodash');
+const mod = require('../..');
 
 describe('filtered sort suite', function suite() {
   Redis.Promise = Promise;
@@ -13,12 +12,11 @@ describe('filtered sort suite', function suite() {
   const metaKeyPattern = '*-metadata';
   const keyPrefix = 'fsort-test:';
   const redis = new Redis({
-    port: process.env.REDIS_PORT_6379_TCP_PORT,
-    host: process.env.REDIS_PORT_6379_TCP_ADDR,
+    port: process.env.REDIS_PORT_6379_TCP_PORT || 6379,
+    host: process.env.REDIS_PORT_6379_TCP_ADDR || 'redis',
     keyPrefix,
   });
   const monitor = redis.duplicate();
-  const mod = require('../../index');
   const prepopulateDataLength = parseInt(process.env.PREPOPULAR || 1000, 10);
   const metadata = {};
   const insertedIds = [];
@@ -74,7 +72,7 @@ describe('filtered sort suite', function suite() {
       if (field) {
         // because lua is -1/+1 and js is -1/0/+1 ids can be sorted differently
         // therefore we compare sort by derivative
-        const map = id => metadata[id][field];
+        const map = (id) => metadata[id][field];
         expect(copy.map(map)).to.be.deep.eq(ids.map(map));
       } else {
         expect(copy).to.be.deep.eq(ids);
@@ -98,20 +96,19 @@ describe('filtered sort suite', function suite() {
   });
 
   if (process.env.DEBUG === '1') {
-    before('monitor', function pretest() {
+    before('monitor', async () => {
       const { inspect } = require('util');
-      return monitor.monitor().then(mon => {
-        mon.on('monitor', function (time, args) {
-          console.info(time + ": " + inspect(args));
-        });
+      const mon = await monitor.monitor();
+      mon.on('monitor', (time, args) => {
+        // eslint-disable-next-line no-console
+        console.info(`${time}: ${inspect(args)}`);
       });
     });
   }
 
   after('close redis', async () => {
-    await redis.disconnect();
-    await monitor.disconnect();
-    console.info('done');
+    await redis.quit();
+    await monitor.quit();
   });
 
   it('filter escaping', function test() {
@@ -132,7 +129,7 @@ describe('filtered sort suite', function suite() {
       '#': 'mamba%-%%',
       '#multi': {
         fields: ['duramba!%'],
-        match: 'caramba%^'
+        match: 'caramba%^',
       },
       walkie: {
         gte: 10,
@@ -140,44 +137,43 @@ describe('filtered sort suite', function suite() {
         eq: 'karamba%',
       },
       tom: '20',
-      berlin: '!werthechampions0%-9'
+      berlin: '!werthechampions0%-9',
     }));
   });
 
   describe('cache invalidation', function invalidationSuite() {
     it('should invalidate cache: sort', function test() {
-
       return redis.fsort(idSetKey, null, null, 'ASC', '{}', Date.now())
         .then(() => redis.zrangebyscore(`${idSetKey}::${mod.FSORT_TEMP_KEYSET}`, '-inf', '+inf'))
-        .tap(keys => expect(keys.length).to.be.eq(1))
+        .tap((keys) => expect(keys.length).to.be.eq(1))
         .tap(() => redis.fsortBust(idSetKey, Date.now()))
-        .then(keys => Promise.join(
-           redis.zcard(`${idSetKey}::${mod.FSORT_TEMP_KEYSET}`),
-           redis.exists(keys)
+        .then((keys) => Promise.join(
+          redis.zcard(`${idSetKey}::${mod.FSORT_TEMP_KEYSET}`),
+          redis.exists(keys)
         ))
         .spread((cardinality, keys) => {
-           expect(cardinality).to.be.eq(0);
-           expect(keys).to.be.eq(0);
+          expect(cardinality).to.be.eq(0);
+          expect(keys).to.be.eq(0);
         });
     });
 
     it('should invalidate cache: sort + filter', function test() {
-       const fieldName = 'fieldExists';
-       const filter = mod.filter({
-        [fieldName]: { exists: '1' }
-       });
+      const fieldName = 'fieldExists';
+      const filter = mod.filter({
+        [fieldName]: { exists: '1' },
+      });
 
       return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, Date.now())
         .then(() => redis.zrangebyscore(`${idSetKey}::${mod.FSORT_TEMP_KEYSET}`, '-inf', '+inf'))
-        .tap(keys => expect(keys.length).to.be.eq(2))
+        .tap((keys) => expect(keys.length).to.be.eq(2))
         .tap(() => redis.fsortBust(idSetKey, Date.now()))
-        .then(keys => Promise.join(
-           redis.zcard(`${idSetKey}::${mod.FSORT_TEMP_KEYSET}`),
-           redis.exists(keys)
+        .then((keys) => Promise.join(
+          redis.zcard(`${idSetKey}::${mod.FSORT_TEMP_KEYSET}`),
+          redis.exists(keys)
         ))
         .spread((cardinality, keys) => {
-           expect(cardinality).to.be.eq(0);
-           expect(keys).to.be.eq(0);
+          expect(cardinality).to.be.eq(0);
+          expect(keys).to.be.eq(0);
         });
     });
   });
@@ -199,7 +195,7 @@ describe('filtered sort suite', function suite() {
     it('pagination: asc', function test() {
       return redis.fsort(idSetKey, null, null, 'ASC', '{}', Date.now(), offset, limit)
         .tap(sortedBy(comparatorASC, prepopulateDataLength))
-        .then(ids => {
+        .then((ids) => {
           expect(ids).to.have.lengthOf(20);
           expect(ids).to.be.deep.eq(insertedIds.slice(offset, offset + limit));
         });
@@ -208,7 +204,7 @@ describe('filtered sort suite', function suite() {
     it('pagination: desc', function test() {
       return redis.fsort(idSetKey, null, null, 'DESC', '{}', Date.now(), offset, limit)
         .tap(sortedBy(comparatorDESC, prepopulateDataLength))
-        .then(ids => {
+        .then((ids) => {
           expect(ids).to.have.lengthOf(20);
           expect(ids).to.be.deep.eq(invertedIds.slice(offset, offset + limit));
         });
@@ -219,19 +215,19 @@ describe('filtered sort suite', function suite() {
     const offset = 10;
     const limit = 20;
     const field = 'age';
-    const map = id => metadata[id][field];
+    const map = (id) => metadata[id][field];
 
     function comparatorAge(direction) {
       return function compare(a, b) {
         const result = map(a) - map(b);
         return direction * result;
       };
-    };
+    }
 
     let externallySortedIdsASC;
     let externallySortedIdsDESC;
     before(function pretest() {
-      externallySortedIdsASC = [].concat(insertedIds).sort(comparatorAge(1));;
+      externallySortedIdsASC = [].concat(insertedIds).sort(comparatorAge(1));
       externallySortedIdsDESC = [].concat(insertedIds).sort(comparatorAge(-1));
     });
 
@@ -248,7 +244,7 @@ describe('filtered sort suite', function suite() {
     it('pagination: asc', function test() {
       return redis.fsort(idSetKey, metaKeyPattern, field, 'ASC', '{}', Date.now(), offset, limit)
         .tap(sortedBy(comparatorAge(1), prepopulateDataLength, field))
-        .then(ids => {
+        .then((ids) => {
           expect(ids).to.have.lengthOf(20);
           expect(ids.map(map)).to.be.deep.eq(externallySortedIdsASC.slice(offset, offset + limit).map(map));
         });
@@ -257,7 +253,7 @@ describe('filtered sort suite', function suite() {
     it('pagination: desc', function test() {
       return redis.fsort(idSetKey, metaKeyPattern, field, 'DESC', '{}', Date.now(), offset, limit)
         .tap(sortedBy(comparatorAge(-1), prepopulateDataLength, field))
-        .then(ids => {
+        .then((ids) => {
           expect(ids).to.have.lengthOf(20);
           expect(ids.map(map)).to.be.deep.eq(externallySortedIdsDESC.slice(offset, offset + limit).map(map));
         });
@@ -268,14 +264,14 @@ describe('filtered sort suite', function suite() {
     const offset = 10;
     const limit = 20;
     const field = 'favColor';
-    const map = id => metadata[id][field];
+    const map = (id) => metadata[id][field];
 
     function comparatorAlphanum(direction) {
       return function compare(a, b) {
         const result = map(a).localeCompare(map(b));
         return direction * result;
       };
-    };
+    }
 
     let externallySortedIdsASC;
     let externallySortedIdsDESC;
@@ -297,7 +293,7 @@ describe('filtered sort suite', function suite() {
     it('pagination: asc', function test() {
       return redis.fsort(idSetKey, metaKeyPattern, field, 'ASC', '{}', Date.now(), offset, limit)
         .tap(sortedBy(comparatorAlphanum(1), prepopulateDataLength, field))
-        .then(ids => {
+        .then((ids) => {
           expect(ids).to.have.lengthOf(20);
           expect(ids.map(map)).to.be.deep.eq(externallySortedIdsASC.slice(offset, offset + limit).map(map));
         });
@@ -306,7 +302,7 @@ describe('filtered sort suite', function suite() {
     it('pagination: desc', function test() {
       return redis.fsort(idSetKey, metaKeyPattern, field, 'DESC', '{}', Date.now(), offset, limit)
         .tap(sortedBy(comparatorAlphanum(-1), prepopulateDataLength, field))
-        .then(ids => {
+        .then((ids) => {
           expect(ids).to.have.lengthOf(20);
           expect(ids.map(map)).to.be.deep.eq(externallySortedIdsDESC.slice(offset, offset + limit).map(map));
         });
@@ -315,12 +311,12 @@ describe('filtered sort suite', function suite() {
 
   describe('filter/exists', function sortFilterExistsEmptySuite() {
     const fieldName = 'fieldExists';
-    const hasOwnProperty = Object.prototype.hasOwnProperty;
-    const jsFilter = id => hasOwnProperty.call(metadata[id], fieldName);
+    const { hasOwnProperty } = Object.prototype;
+    const jsFilter = (id) => hasOwnProperty.call(metadata[id], fieldName);
     const offset = 0;
     const limit = 10;
     const filter = mod.filter({
-      [fieldName]: { exists: '1' }
+      [fieldName]: { exists: '1' },
     });
 
     let filteredIds;
@@ -346,7 +342,7 @@ describe('filtered sort suite', function suite() {
     it('pagination: asc', function test() {
       return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, Date.now(), offset, limit)
         .tap(sortedBy(comparatorASC, filteredLength))
-        .then(ids => {
+        .then((ids) => {
           expect(ids).to.have.lengthOf(limit);
           expect(ids).to.be.deep.eq(filteredIds.slice(offset, offset + limit));
         });
@@ -355,7 +351,7 @@ describe('filtered sort suite', function suite() {
     it('pagination: desc', function test() {
       return redis.fsort(idSetKey, metaKeyPattern, null, 'DESC', filter, Date.now(), offset, limit)
         .tap(sortedBy(comparatorDESC, filteredLength))
-        .then(ids => {
+        .then((ids) => {
           expect(ids).to.have.lengthOf(limit);
           expect(ids).to.be.deep.eq(invertedFilteredIds.slice(offset, offset + limit));
         });
@@ -364,12 +360,12 @@ describe('filtered sort suite', function suite() {
 
   describe('filter/isempty', function sortFilterExistsEmptySuite() {
     const fieldName = 'fieldExists';
-    const hasOwnProperty = Object.prototype.hasOwnProperty;
-    const jsFilter = id => !hasOwnProperty.call(metadata[id], fieldName);
+    const { hasOwnProperty } = Object.prototype;
+    const jsFilter = (id) => !hasOwnProperty.call(metadata[id], fieldName);
     const offset = 0;
     const limit = 10;
     const filter = mod.filter({
-      [fieldName]: { isempty: '1' }
+      [fieldName]: { isempty: '1' },
     });
 
     let filteredIds;
@@ -395,7 +391,7 @@ describe('filtered sort suite', function suite() {
     it('pagination: asc', function test() {
       return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, Date.now(), offset, limit)
         .tap(sortedBy(comparatorASC, filteredLength))
-        .then(ids => {
+        .then((ids) => {
           expect(ids).to.have.lengthOf(limit);
           expect(ids).to.be.deep.eq(filteredIds.slice(offset, offset + limit));
         });
@@ -404,7 +400,7 @@ describe('filtered sort suite', function suite() {
     it('pagination: desc', function test() {
       return redis.fsort(idSetKey, metaKeyPattern, null, 'DESC', filter, Date.now(), offset, limit)
         .tap(sortedBy(comparatorDESC, filteredLength))
-        .then(ids => {
+        .then((ids) => {
           expect(ids).to.have.lengthOf(limit);
           expect(ids).to.be.deep.eq(invertedFilteredIds.slice(offset, offset + limit));
         });
@@ -413,19 +409,20 @@ describe('filtered sort suite', function suite() {
 
   describe('filter/any', function sortFilterExistsEmptySuite() {
     const fieldName = 'age';
-    const hasOwnProperty = Object.prototype.hasOwnProperty;
-    const jsFilter = id => {
+    const jsFilter = (id) => {
       const userAge = metadata[id][fieldName];
-      return ((userAge >= 10 && userAge <= 18) ||
-        (userAge >= 35 && userAge <= 45));
+      return ((userAge >= 10 && userAge <= 18)
+        || (userAge >= 35 && userAge <= 45));
     };
     const offset = 0;
     const limit = 10;
     const filter = mod.filter({
-      [fieldName]: { any: [
-        { gte: 10, lte: 18 },
-        { gte: 35, lte: 45 },
-      ]}
+      [fieldName]: {
+        any: [
+          { gte: 10, lte: 18 },
+          { gte: 35, lte: 45 },
+        ],
+      },
     });
 
     let filteredIds;
@@ -451,7 +448,7 @@ describe('filtered sort suite', function suite() {
     it('pagination: asc', function test() {
       return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, Date.now(), offset, limit)
         .tap(sortedBy(comparatorASC, filteredLength))
-        .then(ids => {
+        .then((ids) => {
           expect(ids).to.have.lengthOf(limit);
           expect(ids).to.be.deep.eq(filteredIds.slice(offset, offset + limit));
         });
@@ -460,7 +457,7 @@ describe('filtered sort suite', function suite() {
     it('pagination: desc', function test() {
       return redis.fsort(idSetKey, metaKeyPattern, null, 'DESC', filter, Date.now(), offset, limit)
         .tap(sortedBy(comparatorDESC, filteredLength))
-        .then(ids => {
+        .then((ids) => {
           expect(ids).to.have.lengthOf(limit);
           expect(ids).to.be.deep.eq(invertedFilteredIds.slice(offset, offset + limit));
         });
@@ -469,7 +466,7 @@ describe('filtered sort suite', function suite() {
 
   describe('sort/id filter only', function sortFilterIdSuite() {
     const filterIdString = 'd-9';
-    const jsFilter = a => a.indexOf(filterIdString) >= 0;
+    const jsFilter = (a) => a.indexOf(filterIdString) >= 0;
     const offset = 10;
     const limit = 20;
     const filter = mod.filter({ '#': filterIdString });
@@ -496,7 +493,7 @@ describe('filtered sort suite', function suite() {
     it('pagination: asc', function test() {
       return redis.fsort(idSetKey, null, null, 'ASC', filter, Date.now(), offset, limit)
         .tap(sortedBy(comparatorASC, filteredLength))
-        .then(ids => {
+        .then((ids) => {
           expect(ids).to.have.lengthOf(20);
           expect(ids).to.be.deep.eq(filteredIds.slice(offset, offset + limit));
         });
@@ -505,7 +502,7 @@ describe('filtered sort suite', function suite() {
     it('pagination: desc', function test() {
       return redis.fsort(idSetKey, null, null, 'DESC', filter, Date.now(), offset, limit)
         .tap(sortedBy(comparatorDESC, filteredLength))
-        .then(ids => {
+        .then((ids) => {
           expect(ids).to.have.lengthOf(20);
           expect(ids).to.be.deep.eq(invertedFilteredIds.slice(offset, offset + limit));
         });
@@ -518,13 +515,13 @@ describe('filtered sort suite', function suite() {
     const age = 15;
     const fields = ['surname', 'favColor', 'email'];
     const color = 'ue';
-    const jsFilter = a => {
+    const jsFilter = (a) => {
       const meta = metadata[a];
-      return a.indexOf(filterIdString) >= 0 &&
-        meta.name.toLowerCase().indexOf(name) >= 0 &&
-        meta.age >= age &&
-        meta.age <= age * 3 &&
-        ld.some(ld.values(ld.pick(meta, fields)), it => it.indexOf(color) >= 0)
+      return a.indexOf(filterIdString) >= 0
+        && meta.name.toLowerCase().indexOf(name) >= 0
+        && meta.age >= age
+        && meta.age <= age * 3
+        && ld.some(ld.values(ld.pick(meta, fields)), (it) => it.indexOf(color) >= 0);
     };
 
     const offset = 10;
@@ -558,7 +555,7 @@ describe('filtered sort suite', function suite() {
     it('pagination: asc', function test() {
       return redis.fsort(idSetKey, metaKeyPattern, null, 'ASC', filter, Date.now(), offset, limit)
         .tap(sortedBy(comparatorASC, filteredLength))
-        .then(ids => {
+        .then((ids) => {
           expect(ids).to.be.deep.eq(filteredIds.slice(offset, offset + limit));
         });
     });
@@ -566,13 +563,13 @@ describe('filtered sort suite', function suite() {
     it('pagination: desc', function test() {
       return redis.fsort(idSetKey, metaKeyPattern, null, 'DESC', filter, Date.now(), offset, limit)
         .tap(sortedBy(comparatorDESC, filteredLength))
-        .then(ids => {
+        .then((ids) => {
           expect(ids).to.be.deep.eq(invertedFilteredIds.slice(offset, offset + limit));
         });
     });
   });
 
-  describe('aggregate filter', function suite() {
+  describe('aggregate filter', () => {
     it('sums up age and returns key', function test() {
       const filter = mod.filter({
         age: { gte: 10, lte: 40 },

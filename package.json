@@ -2,13 +2,17 @@
   "name": "redis-filtered-sort",
   "version": "2.3.0",
   "description": "Exports LUA script, which is able to perform multi filter operations, as well as sorts",
-  "main": "./lib",
-  "engine": {
-    "node": ">= 7.6.0"
-  },
+  "main": "./lib/index.js",
+  "files": [
+    "src/*",
+    "lib/*",
+    "lua/*"
+  ],
   "scripts": {
-    "test": "mdep test run",
-    "compile": "make all",
+    "pretest": "yarn compile",
+    "test": "yarn lint && mdep test run",
+    "lint": "eslint ./src ./test/suites",
+    "compile": "rimraf ./lib; babel -d ./lib --copy-files ./src",
     "prepublishOnly": "yarn compile",
     "semantic-release": "semantic-release"
   },
@@ -30,31 +34,27 @@
   },
   "homepage": "https://github.com/makeomatic/redis-filtered-sort#readme",
   "peerDependencies": {
-    "ioredis": "2.x.x || 3.x.x"
+    "ioredis": "2.x.x || 3.x.x || 4.x.x"
   },
   "devDependencies": {
-    "@babel/cli": "^7.0.0",
-    "@babel/core": "^7.0.0",
-    "@babel/plugin-proposal-object-rest-spread": "^7.0.0",
-    "@babel/plugin-transform-strict-mode": "^7.0.0",
-    "@babel/register": "^7.0.0",
-    "@makeomatic/deploy": "^8.4.4",
-    "babel-plugin-istanbul": "^5.1.4",
-    "chai": "^4.2.0",
-    "cross-env": "^5.2.0",
-    "faker": "^4.1.0",
-    "ioredis": "^4.9.5",
-    "lodash": "^4.17.11",
-    "mocha": "^6.1.4",
-    "nyc": "^14.1.1"
+    "@babel/cli": "^7.16.7",
+    "@babel/core": "^7.16.7",
+    "@babel/plugin-proposal-object-rest-spread": "^7.16.7",
+    "@babel/plugin-transform-strict-mode": "^7.16.7",
+    "@babel/register": "^7.16.7",
+    "@makeomatic/deploy": "^11.0.2",
+    "chai": "^4.3.4",
+    "cross-env": "^7.0.3",
+    "eslint-config-makeomatic": "^5.1.0",
+    "faker": "^5.5.3",
+    "ioredis": "^4.28.2",
+    "mocha": "^9.1.3",
+    "nyc": "^15.1.0",
+    "rimraf": "^3.0.2"
   },
   "dependencies": {
-    "cluster-key-slot": "^1.0.12"
-  },
-  "husky": {
-    "hooks": {
-      "commit-msg": "commitlint -e $HUSKY_GIT_PARAMS",
-      "prepare-commit-msg": "./node_modules/@makeomatic/deploy/git-hooks/prepare-commit-msg $HUSKY_GIT_PARAMS"
-    }
+    "cluster-key-slot": "^1.1.0",
+    "lodash.camelcase": "^4.3.0",
+    "lodash.snakecase": "^4.1.1"
   }
 }

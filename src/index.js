@@ -1,29 +1,26 @@
 const fs = require('fs');
-const path = require('path');
+const { resolve } = require('path');
+const camelCase = require('lodash.camelcase');
+const snakeCase = require('lodash.snakecase');
 
-const camelCase = require('lodash/camelCase');
-const snakeCase = require('lodash/snakeCase');
-const { FSORT_TEMP_KEYSET } = require('./constants');
-
-const lua = fs.readFileSync(path.join(__dirname, 'sorted-filtered-list.lua'));
-const fsortBust = fs.readFileSync(path.join(__dirname, 'filtered-list-bust.lua'));
-const aggregateScript = fs.readFileSync(path.join(__dirname, 'groupped-list.lua'));
+const lua = fs.readFileSync(resolve(__dirname, '../lua/sorted-filtered-list.lua'));
+const fsortBust = fs.readFileSync(resolve(__dirname, '../lua/filtered-list-bust.lua'));
+const aggregateScript = fs.readFileSync(resolve(__dirname, '../lua/groupped-list.lua'));
 
 // cached vars
-const regexp = /[\^\$\(\)\%\.\[\]\*\+\-\?]/g;
-const keys = Object.keys;
-const stringify = JSON.stringify;
+const regexp = /[\^$()%.[\]*+\-?]/g;
+const { keys } = Object;
+const { stringify } = JSON;
 const BLACK_LIST_PROPS = ['eq', 'ne'];
+
+exports.FSORT_TEMP_KEYSET = 'fsort_temp_keys';
 
 const luaWrapper = (script) => `
 ---
-
 local function getIndexTempKeys(index)
-  return index .. "::${FSORT_TEMP_KEYSET}";
+  return index .. "::${exports.FSORT_TEMP_KEYSET}";
 end
-
 ---
-
 ${script.toString('utf-8')}
 `;
 
@@ -44,8 +41,6 @@ exports.attach = function attachToRedis(redis, _name, useSnakeCase = false) {
   redis.defineCommand(aggregateName, { numberOfKeys: 2, lua: aggregateScript });
 };
 
-exports.nonAtomic = (dlock) => require('./fsort')(dlock);
-
 /**
  * Performs escape on a filter clause
  * ^ $ ( ) % . [ ] * + - ? are prefixed with %
@@ -55,7 +50,7 @@ exports.nonAtomic = (dlock) => require('./fsort')(dlock);
  */
 function escape(filter) {
   return filter.replace(regexp, '%$&');
-};
+}
 exports.escape = escape;
 
 /**
