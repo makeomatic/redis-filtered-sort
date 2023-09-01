@@ -330,6 +330,24 @@ local function lte(value, filter)
   return isnumber(value) <= filter;
 end
 
+-- filter: gt
+local function gt(value, filter)
+  if isempty(value) then
+    return false;
+  end
+
+  return isnumber(value) > filter;
+end
+
+-- filter: lt
+local function lt(value, filter)
+  if isempty(value) then
+    return false;
+  end
+
+  return isnumber(value) < filter;
+end
+
 -- filter: not equal
 local function ne(value, filter)
   return value ~= filter;
@@ -355,6 +373,8 @@ end
 local opType = {
   gte = gte,
   lte = lte,
+  gt = gt,
+  lt = lt,
   match = filterString,
   eq = eq,
   ne = ne,

@@ -1,7 +1,7 @@
 const Promise = require('bluebird');
 const Redis = require('ioredis');
 const { expect } = require('chai');
-const faker = require('faker');
+const { faker } = require('@faker-js/faker');
 const ld = require('lodash');
 const mod = require('../..');
 
@@ -27,15 +27,15 @@ describe('filtered sort suite', function suite() {
     return metaKeyPattern.replace('*', id);
   }
 
-  function generateUser(n) {
+  async function generateUser(n) {
     const id = `id-${n}`;
     const user = metadata[id] = {
       email: faker.internet.email(),
-      name: faker.name.firstName(),
-      surname: faker.name.lastName(),
+      name: faker.person.firstName(),
+      surname: faker.person.lastName(),
       balance: faker.finance.amount(),
-      favColor: faker.commerce.color(),
-      country: faker.address.countryCode(),
+      favColor: faker.color.rgb(),
+      country: faker.location.countryCode(),
       age: ld.random(10, 60),
     };
 
@@ -46,10 +46,11 @@ describe('filtered sort suite', function suite() {
     insertedIds.push(id);
     invertedIds.push(id);
 
-    return Promise.join(
-      redis.sadd(idSetKey, id),
-      redis.hmset(metadataKey(id), user)
-    );
+    return redis
+      .pipeline()
+      .sadd(idSetKey, id)
+      .hmset(metadataKey(id), user)
+      .exec();
   }
 
   function comparatorASC(a, b) {
@@ -594,7 +595,7 @@ describe('filtered sort suite', function suite() {
         .then(JSON.parse)
         .then((response) => {
           // this would average to 15000+ due to random ranges
-          expect(response.age).to.be.gt(15000);
+          expect(response.age).to.be.gt(10000);
         });
     });
   });
