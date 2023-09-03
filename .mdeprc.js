@@ -5,7 +5,7 @@ exports.nycCoverage = false;
 exports.nycReport = false;
 exports.test_framework = 'mocha';
 exports.pre = 'rimraf ./coverage/tmp';
-exports.post_exec = 'yarn c8 report -r text -r lcov';
+exports.post_exec = 'pnpm c8 report -r text -r lcov';
 exports.extras = {
   tester: {
     environment: {

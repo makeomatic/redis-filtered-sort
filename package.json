@@ -8,7 +8,7 @@
     "lua/*"
   ],
   "scripts": {
-    "test": "yarn lint && mdep test run",
+    "test": "pnpm lint && mdep test run",
     "lint": "eslint ./src ./test/suites",
     "semantic-release": "semantic-release",
     "prepare": "mdep install || true"
